@@ -1,3 +1,10 @@
+#' carx: A package for estimating linear regression models with censored responses and autoregressive residuals
+#'
+#' @docType package
+#' @name carx
+NULL
+
+
 library(stats)
 library(tmvtnorm)
 #library(debug)
@@ -7,24 +14,33 @@ library(ggplot2)
 #library(matrixStats)
 
 
-#' calculate the conditional mean & variance of a multivariate normal distribution 
-#' with (meanVec, varMat), conditional on y at indices conditionalIndex
+#' \code{conditionalDistMvnorm} calculates the conditional mean & variance of a random vector following multivariate normal distribution.
+#'
+#' \code{conditionalDistMvnorm} calculates the conditional mean & variance of a sub-vector 
+#' of a vector given the rest of known elements, following multivariate normal distribution.
+#' This function calculates the conditional mean & variance of a multivariate normal distribution.
+#' with (meanVec, varMat), conditional on y at indices conditionalIndex.
+#'
 #' @param y a vector to be conditioned on
 #' @param conditionalIndex the index to be conditioned on
 #' @param meanVec the mean vector the joint multivariate normal distribution
 #' @param varMat the variance-covariance matrix of the joint multivariate normal distribution
+#' @return a list consisting of 'mean' and 'var' representing the conditional mean and variance respectively.
 #' @keywords conditional distribution multivariate normal
 #' @export 
 #' @examples
-#' conditionalDistMvnorm(c(-0.5,0.5), c(2,4), c(1,2,3,4),covMat)
-conditionalDistMvnorm <- function(y,conditionalIndex,meanVec,varMat)
+#' conditionalDistMvnorm(c(-0.5,0.5), c(2,4), c(1,2,3,4),matrix(
+#' c(1,0.3,0.2,0.1, 0.3,1,-0.1,0.3,0.2,-0.1,1,0.1,0.1,0.3,0.1,1),
+#' nrow=4,ncol=4,byrow=TRUE))
+
+conditionalDistMvnorm <- function(y, conditionalIndex, meanVec, varMat)
 {
 	sigma11 <- varMat[-conditionalIndex,-conditionalIndex]
 	sigma22 <- varMat[ conditionalIndex, conditionalIndex]
 	sigma12 <- varMat[-conditionalIndex, conditionalIndex]
 	sigma21 <- varMat[ conditionalIndex,-conditionalIndex]
 	invSigma22 <- solve(sigma22)
-	mNew <- meanVec[-conditionalIndex] + as.vector(sigma12 %*% invSigma22 %*%(y - mnVec[conditionalIndex]))
+	mNew <- meanVec[-conditionalIndex] + as.vector(sigma12 %*% invSigma22 %*%(y - meanVec[conditionalIndex]))
 	vNew <- sigma11 - sigma12 %*% invSigma22 %*% sigma21
 
 	return (list('mean'=mNew,'var' = vNew))
@@ -33,6 +49,7 @@ conditionalDistMvnorm <- function(y,conditionalIndex,meanVec,varMat)
 #' compute the covariance matrix of {\eta_t,\cdots,\eta_{t-p}} of the AR model 
 #' @param order the order of the AR model
 #' @param sigmaEps the standard deviation of the residuals of the AR model
+#' @return the covariance matrix needed
 computeCovAR <- function(order, sigmaEps)
 {
 	n <- length(order)+1
@@ -59,10 +76,12 @@ computeCovAR <- function(order, sigmaEps)
 
 carx <- function(x,...) UseMethod("carx")
 
-#' The default method for CARX 
-#' use given parameters, compute the estimated parameters of CARX, 
+#' \code{carx.default} is the default method for CARX.
+
+#' \code{carx.default} uses given data and other settings to compute the estimated parameters of CARX,
 #' and optionally compute the standard error or confidence intervals of parameter estimates
 #' by parametric bootstrap.
+
 #' @param y a vector of regressors
 #' @param x a matrix of covariances
 #' @param censorIndicator a vector of 0/1's indicating whether the corresponding y is censored
@@ -75,6 +94,9 @@ carx <- function(x,...) UseMethod("carx")
 #' @param nBootstrapSample number of bootstrap samples when estimating confidence interval for the parameter, default = 1000
 #' @param useGoodRes bool value to indicate if use estimated residuals to bootstrap the confidence interval, default = FALSE
 #' @param skipIndex a vector of indices indicating indices to be skipped, as calculating the conditional log-likelihood need some initial values to start, also is the initial values to calculate the conditional log-likelihood, useful if there are multiple segment of series in the whole series.
+#' @return a CARX object of the estimated model
+
+
 carx.default <-
 	function(y,x,censorIndicator,censorLimit,nAR,tol=1e-4,max.iter=500,getCI=FALSE,alpha=0.95,nBootstrapSample=1000, useGoodRes=FALSE,skipIndex=NaN){
 		nObs <- dim(x)[1]
@@ -132,7 +154,7 @@ carx.default <-
 		}
 
 		getPrmtr <- function(){
-			ret <- c(prmtrAR, prmtrEV, sigmaEps)
+			ret <- c(prmtrEV, prmtrAR, sigmaEps)
 			return(ret)
 		}
 
@@ -143,20 +165,20 @@ carx.default <-
 
 		setInitPrmtrForBootstrap <- function()
 		{
-			prmtrAR   <<-		prmtrAREstd
-			prmtrEV   <<-     prmtrEVEstd
+			prmtrEV   <<-   prmtrEVEstd
+			prmtrAR   <<-	prmtrAREstd
 			sigmaEps  <<-	sigmaEpsEstd
 		}
 
 		setEstdPrmtr <- function()
 		{
-			prmtrAREstd   <<- prmtrAR 
 			prmtrEVEstd   <<- prmtrEV
-			sigmaEpsEstd <<- sigmaEps
+			prmtrAREstd   <<- prmtrAR 
+			sigmaEpsEstd  <<- sigmaEps
 		}
 
 		getEstdPrmtr <- function(){
-			ret <- c(prmtrAREstd, prmtrEVEstd, sigmaEpsEstd)
+			ret <- c(prmtrEVEstd, prmtrAREstd, sigmaEpsEstd)
 			return(ret)
 		}
 
@@ -484,13 +506,14 @@ carx.default <-
 		setFitted() #must be called before setResiduals, because setResiduals use fittedValues returned by it
 		setResiduals()
 
-		coeff <- c(prmtrAREstd,prmtrEVEstd)
-		names(coeff) <- c(paste0('AR',1:nAR), colnames(x))
+		coeff <- c(prmtrEVEstd,prmtrAREstd)
+		names(coeff) <- c(colnames(x),paste0('AR',1:nAR))
 
 		ret$coefficients = coeff
-		ret$sigma = sigmaEpsEstd
-		ret$prmtrAR = prmtrAREstd
 		ret$prmtrEV = prmtrEVEstd
+		ret$prmtrAR = prmtrAREstd
+		ret$sigma = sigmaEpsEstd
+
 		ret$fitted.values = getFitted()
 		ret$residuals = getResiduals()
 		ret$censorRate = getCensorRate()
@@ -515,7 +538,6 @@ carx.default <-
 			ret$CI <- NULL
 			ret$vcov <- NULL
 		}
-
 		class(ret) <- "carx"
 		ret
 	}
@@ -664,6 +686,8 @@ carx.aic <- function(x,...)
 }
 
 
+#' print a short description of the fitted model (only a few lines)
+#' @param x a fitted model object
 print.carx <- function(x,...)
 {
 	cat("Call:\n")
@@ -706,6 +730,7 @@ print.carx <- function(x,...)
 
 }
 
+#' summarize the fitted model on parameters, residuals and model fit
 summary.carx <- function(object,...){
 	numDig <- function(x,d1,d2){
 		y <- x
@@ -983,13 +1008,13 @@ summarizeResult <- function(sampleSize,rslt, prefix){
 
 carx.singleSimulation <- function()
 {
-	trueAR <- c(0.1,0.3,-0.2)
 	trueEV <- c(0.2,0.4)
+	trueAR <- c(0.1,0.3,-0.2)
 	trueSigma <- sqrt(0.5)
 	sampleSize <- 100
-	climit <- -100
+	climit <- -0.2
 	iRep <- 1
-	fullEstimation <- T 
+	fullEstimation <- F
 
 	args <- commandArgs(TRUE)
 	if(length(args) > 0)
