@@ -1,4 +1,5 @@
 #' carx: A package for estimating linear regression models with censored responses and autoregressive residuals
+#' support left-censoring, right-censoring or double-censoring
 #'
 #' @docType package
 #' @name carx
@@ -84,8 +85,11 @@ carx <- function(x,...) UseMethod("carx")
 
 #' @param y a vector of regressors
 #' @param x a matrix of covariances
-#' @param censorIndicator a vector of 0/1's indicating whether the corresponding y is censored
+#' @param censorIndicator a vector of -1,0,1's indicating that the corresponding y is 
+#' left-censored, not censored, or right-censored.
 #' @param censorLimit a vector of censor limits for each y
+#' @param lowerCensorLimit a vector of lower censor limits for each y or a number assuming uniform limit
+#' @param upperCensorLimit a vector of upper censor limits for each y or a number assuming uniform limit
 #' @param nAR the order of AR model for the regression errors
 #' @param tol the tolerance in estimating the parameters, default = 1.0e-4
 #' @param max.iter maximum number of iterations allowed when estimating parameters, default = 500
@@ -97,8 +101,11 @@ carx <- function(x,...) UseMethod("carx")
 #' @return a CARX object of the estimated model
 
 
-carx.default <-
-	function(y,x,censorIndicator,censorLimit,nAR,tol=1e-4,max.iter=500,getCI=FALSE,alpha=0.95,nBootstrapSample=1000, useGoodRes=FALSE,skipIndex=NaN){
+#carx.default <- function(y,x,censorIndicator,censorLimit,nAR,lowerCensorLimit,upperCensorLimit,
+carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,nAR,
+						 tol=1e-4,max.iter=500,getCI=FALSE,alpha=0.95,nBootstrapSample=1000, 
+						 useGoodRes=FALSE,skipIndex=NaN)
+{
 		nObs <- dim(x)[1]
 		nEV <- dim(x)[2]
 		if(length(y) != nObs){
@@ -118,12 +125,32 @@ carx.default <-
 		#		skipIndex <- c(skipIndex,seq(i,i+nAR-1))
 		#}
 		nSkip <- length(skipIndex)
-		censorIndicator <- as.logical(censorIndicator)
+
+		#censorIndicator <- as.logical(censorIndicator)
+		censorIndicator[ censorIndicator>0 ] <- 1
+		censorIndicator[ censorIndicator<0 ] <- -1
+
+		if(length(lowerCensorLimit) == 1 && !is.nan(lowerCensorLimit))
+		{
+			lowerCensorLimit <- rep(lowerCensorLimit,nObs)
+		}else
+			  lowerCensorLimit <- rep(-Inf,nObs)
+	  
+
+		if(length(upperCensorLimit) == 1 && !is.nan(upperCensorLimit))
+		{
+			upperCensorLimit <- rep(upperCensorLimit,nObs)
+		}
+		else
+			  upperCensorLimit <- rep(Inf,nObs)
+
+
 
 		ret = list(y = y,
 			   x = x,
 			   censorIndicator = censorIndicator,
-			   censorLimit = censorLimit,
+			   lowerCensorLimit = lowerCensorLimit,
+			   upperCensorLimit = upperCensorLimit,
 			   skipIndex = skipIndex
 			   )
 
@@ -159,7 +186,7 @@ carx.default <-
 		}
 
 		getCensorRate <- function(){
-			return(sum(censorIndicator)*1.0/length(censorIndicator))
+			return(sum(abs(censorIndicator))*1.0/length(censorIndicator))
 		}
 
 
@@ -209,26 +236,29 @@ carx.default <-
 				wkCov[idx,,] <<- 0                # so here
 				tmpCensorIndicator <- censorIndicator[idx:(idx-nAR)]
 				#print(c(idx, sum(tmpCensorIndicator), nAR+1))
-				nCensored <- sum(tmpCensorIndicator)
+				nCensored <- sum(abs(tmpCensorIndicator))
 				if(nCensored)
 				{# at least one is censored
 					if( nCensored < (nAR+1) )
 					{
-						conditionalIndex <- which(!tmpCensorIndicator)
+						conditionalIndex <- which(tmpCensorIndicator==0) #indices for observed data
 						tmpY <- y[idx:(idx-nAR)][conditionalIndex]
 						tmpM <- trend[idx:(idx-nAR)]
-						cdist <- conditionalDistMvnorm(tmpY, conditionalIndex,tmpM,covEta)
+						cdist <- conditionalDistMvnorm(tmpY,conditionalIndex,tmpM,covEta)
 						tmpMean <- cdist$'mean'
 						tmpVar <- cdist$'var'
 					}else{
 						tmpMean <- trend[idx:(idx-nAR)]
 						tmpVar <- covEta
 					}
-					tmpCensorLimit <- censorLimit[idx:(idx-nAR)][tmpCensorIndicator]
-					ret <- mtmvnorm(tmpMean,tmpVar,upper=tmpCensorLimit)
+					tmpLower <- rep(-Inf,length = nCensored)
+					tmpUpper <- rep(Inf,length = nCensored)
+					tmpLower[tmpCensorIndicator>0] <- upperCensorLimit[idx:(idx-nAR)][tmpCensorIndicator>0]
+					tmpUpper[tmpCensorIndicator<0] <- lowerCensorLimit[idx:(idx-nAR)][tmpCensorIndicator<0]
+					ret <- mtmvnorm(tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
 
-					wkMean[idx,tmpCensorIndicator] <<- ret$'tmean'      
-					wkCov[idx,tmpCensorIndicator,tmpCensorIndicator] <<- ret$'tvar' 
+					wkMean[idx,tmpCensorIndicator!=0] <<- ret$'tmean'      
+					wkCov[idx,tmpCensorIndicator!=0,tmpCensorIndicator!=0] <<- ret$'tvar' 
 				} 
 				#message("E-step done.") 
 			}
@@ -241,7 +271,8 @@ carx.default <-
 				tmpCensorIndicator <- censorIndicator[idx:(idx-nAR)]
 				#print(c(idx, sum(tmpCensorIndicator), nAR+1))
 				wkMean[idx,] <<- y[idx:(idx-nAR)]
-				wkMean[idx,tmpCensorIndicator] <<- censorLimit[idx:(idx-nAR)][tmpCensorIndicator]
+				wkMean[idx,tmpCensorIndicator>0] <<- upperCensorLimit[idx:(idx-nAR)][tmpCensorIndicator>0]
+				wkMean[idx,tmpCensorIndicator<0] <<- lowerCensorLimit[idx:(idx-nAR)][tmpCensorIndicator<0]
 				wkCov[idx,,] <<- 0                
 			}
 			#print("E-step Naive done.")
@@ -251,7 +282,8 @@ carx.default <-
 			res <<- numeric(nObs)
 			res[skipIndex] <<- NaN
 			res[-skipIndex] <<- y[-skipIndex] - fittedValues[-skipIndex]
-			res[censorIndicator] <<- censorLimit[censorIndicator] - fittedValues[censorIndicator]
+			res[censorIndicator>0] <<- upperCensorLimit[censorIndicator>0] - fittedValues[censorIndicator>0]
+			res[censorIndicator<0] <<- lowerCensorLimit[censorIndicator<0] - fittedValues[censorIndicator<0]
 		}
 
 		setResiduals_old <- function(){
@@ -438,7 +470,9 @@ carx.default <-
 				eta[i] <- eta[(i-1):(i-nAR)] %*% prmtrAR + eps[i]
 				y[i] <<- trend[i] + eta[i]
 			}
-			censorIndicator <<- (y < censorLimit)
+			cenosrIndicator <<- rep(0,length(nObs))
+			censorIndicator[y<lowerCensorLimit] <<- -1
+			censorIndicator[y>upperCensorLimit] <<- 1
 			#message(paste0("censor rate: ", sum(censorIndicator)/nObs))
 		}
 
@@ -475,18 +509,22 @@ carx.default <-
 					# at least one is censored 
 					if( nCensored < nAR )
 					{ 
-						conditionalIndex <- which(!tmpCensorIndicator)
-						tmpY <- y[(idx-1):(idx-nAR)][conditionalIndex] 
+						conditionalIndex <- which(tmpCensorIndicator==0)
+						tmpY <- y[(idx-1):(idx-nAR)][conditionalIndex]
 						tmpM <- trend[(idx-1):(idx-nAR)] 
-						cdist <- conditionalDistMvnorm(tmpY, conditionalIndex,tmpM,covEta[-1,-1]) 
+						cdist <- conditionalDistMvnorm(tmpY, conditionalIndex,tmpM,covEta[-1,-1])
 						tmpMean <- cdist$'mean' 
 						tmpVar <- cdist$'var' 
 					}else{ 
-						tmpMean <- trend[(idx-1):(idx-nAR)] 
+						tmpMean <- trend[(idx-1):(idx-nAR)]
 						tmpVar <- covEta[-1,-1]
 					}
-					tmpCensorLimit <- censorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator]
-					ret <- mtmvnorm(tmpMean,tmpVar,upper=tmpCensorLimit) 
+                    tmpLower <- rep(-Inf,length = nCensored)
+					tmpUpper <- rep(Inf,length = nCensored)
+					tmpLower[tmpCensorIndicator>0] <- upperCensorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator>0]
+					tmpUpper[tmpCensorIndicator<0] <- lowerCensorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator<0]
+					ret <- mtmvnorm(tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper,doComputeVariance=FALSE)
+
 					wkm[tmpCensorIndicator] <- ret$'tmean'
 				}
 				fittedValues[idx] <<- trend[idx] + prmtrAR%*%(wkm-trend[(idx-1):(idx-nAR)])
@@ -543,93 +581,6 @@ carx.default <-
 	}
 
 
-
-outlierDetection <- function(model){
-	message("detecting outliers")
-	nSample <- 10000
-	threshold <- 0.025/model$nObs
-	eps <- rnorm(nSample,0,model$sigma)
-	trend <- model$x%*%model$prmtrEV
-	covEta <- computeCovAR(model$prmtrAR, model$sigma)
-	nObs <- model$nObs
-	nAR <- model$nAR
-	prmtrAR <- model$prmtrAR
-	skipIndex <- model$skipIndex
-	y <- model$y
-	censorIndicator <- model$censorIndicator
-	censorLimit <- model$censorLimit
-	y[censorIndicator] <- censorLimit[censorIndicator]
-
-
-	pValues <- numeric(nObs)
-	pValues[skipIndex] <- 1
-
-	for(idx in seq(1,nObs)[-skipIndex])
-	{
-		#message(sprintf("checking %i",idx))
-		wkm <- y[(idx-1):(idx-nAR)]
-		tmpCensorIndicator <- censorIndicator[(idx-1):(idx-nAR)]
-		nCensored <- sum(tmpCensorIndicator)
-		if(nCensored)   #at least one is censored
-		{
-			if( nCensored < nAR ) #not all are censored
-			{ 
-				conditionalIndex <- which(!tmpCensorIndicator)
-				tmpY <- y[(idx-1):(idx-nAR)][conditionalIndex] 
-				tmpM <- trend[(idx-1):(idx-nAR)]
-				cdist <- conditionalDistMvnorm(tmpY, conditionalIndex,tmpM,covEta[-1,-1])
-				tmpMean <- cdist$'mean' 
-				tmpVar <- cdist$'var' 
-			}else{ 
-				tmpMean <- trend[(idx-1):(idx-nAR)]
-				tmpVar <- covEta[-1,-1]
-			}
-			tmpCensorLimit <- censorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator]
-			#print(tmpMean)
-			#print(tmpVar)
-			smpl <- rtmvnorm(nSample,tmpMean,tmpVar,upper=tmpCensorLimit,algorithm="gibbs")
-			smpl <- as.matrix(smpl)
-			#print(smpl)
-			ySmpl <- numeric(nSample)
-			for(i in 1:nSample){
-				wkm[tmpCensorIndicator] <- smpl[i,]
-				ySmpl[i] <- trend[idx] + (wkm - trend[(idx-1):(idx-nAR)])%*%prmtrAR + eps[i]
-			}
-			pU <- sum(ySmpl > y[idx])/nSample
-			pL <- sum(ySmpl < y[idx])/nSample
-		}
-		else{
-			r <- y[idx]-trend[idx] - (wkm-trend[(idx-1):(idx-nAR)])%*%prmtrAR
-			r <- r/model$sigma
-			pU <- pnorm(r,lower.tail=FALSE)
-			pL <- pnorm(r,lower.tail=TRUE)
-		}
-		pValues[idx] <- min(pU,pL)
-	}
-	minP <- min(pValues)
-	if( minP <= threshold ){
-		i <- which(pValues == minP)
-		i
-	} else
-		-1
-}
-
-setCensorLimit <- function(cl,nObs) { 
-	if(length(cl) == 1){
-		censorLimit <- rep(cl,nObs)
-	}
-	else {
-		if(length(cl) == nObs){
-			censorLimit <- cl
-		}
-		else{
-			print("error censor limit")
-		}
-	}
-	censorLimit
-}
-
-
 carx.formula <- function(formula, data=list(),...)
 {
 	mf <- model.frame(formula=formula,data=data)
@@ -642,11 +593,9 @@ carx.formula <- function(formula, data=list(),...)
 	est
 }
 
-carx.simulate <- function(nObs, prmtrAR, prmtrEV, sigmaEps, censorLimit, seed=0){
+carx.simulate <- function(nObs, prmtrAR, prmtrEV, sigmaEps, lowerCensorLimit, upperCensorLimit, seed=0){
 	nAR <- length(prmtrAR)
 	nEV <- length(prmtrEV)
-
-	cl <- setCensorLimit(censorLimit,nObs)
 
 	set.seed(seed)
 	eps <- rnorm(nObs,0, sigmaEps )
@@ -663,10 +612,16 @@ carx.simulate <- function(nObs, prmtrAR, prmtrEV, sigmaEps, censorLimit, seed=0)
 		eta[i] <- eta[(i-1):(i-nAR)] %*% prmtrAR + eps[i]
 		y[i] <- trend[i] + eta[i]
 	}
-	censorIndicator <- (y < cl)
+	censorIndicator <- rep(0,nObs)
+	censorIndicator[y<lowerCensorLimit] <- -1
+	censorIndicator[y>upperCensorLimit] <- 1
 
-	message(paste0("censor rate: ", sum(censorIndicator)/nObs))
-	ret <- list( y = y, x = externalVariable, censorIndicator=censorIndicator,censorLimit=cl)
+	message(paste0("censor rate: ", sum(abs(censorIndicator))/nObs))
+	ret <- list(y = y,
+				x = externalVariable,
+				censorIndicator=censorIndicator,
+				lowerCensorLimit=lowerCensorLimit,
+				upperCensorLimit=upperCensorLimit)
 	ret
 }
 
@@ -886,7 +841,7 @@ plot.carx <- function(object,transformFun=NULL,xAxisVar=NULL,xlab="",ylab="",sav
 	postscript(saveFig)
 
 	yh <- predict(object)
-	censorLimit <- object$censorLimit
+	censorLimit <- object$lowerCensorLimit
 	y <- object$y
 	ylim <- range(c(y,yh,censorLimit),na.rm=TRUE)
 	#y[object$censorIndicator] <- NA
@@ -1011,8 +966,9 @@ carx.singleSimulation <- function()
 	trueEV <- c(0.2,0.4)
 	trueAR <- c(0.1,0.3,-0.2)
 	trueSigma <- sqrt(0.5)
-	sampleSize <- 100
-	climit <- -0.2
+	sampleSize <- 1000
+	lcl <- -0.2
+	ucl <- Inf
 	iRep <- 1
 	fullEstimation <- F
 
@@ -1029,11 +985,14 @@ carx.singleSimulation <- function()
 	nAR <- length(trueAR)
 	truePrmtr <- c(trueAR,trueEV,trueSigma)
 	nPrmtr <- length(truePrmtr)
+	lowercl <- rep(lcl, sampleSize)
+	uppercl <- rep(ucl, sampleSize)
 
-	dat <- carx.simulate(sampleSize, trueAR, trueEV, trueSigma, climit, seed=37513*iRep)
 
-	censorRate <- sum(dat$y < climit)
-	rslt <- carx.default(dat$y,dat$x,dat$censorIndicator,dat$censorLimit,nAR, getCI=fullEstimation,skipIndex=seq(1,nAR))
+	dat <- carx.simulate(sampleSize, trueAR, trueEV, trueSigma, lowercl, uppercl, seed=37513*iRep)
+
+	censorRate <- sum(dat$y < lowercl) + sum(dat$y > uppercl)
+	rslt <- carx.default(dat$y,dat$x,dat$censorIndicator,dat$lowerCensorLimit,dat$lowerCensorLimit, nAR, getCI=fullEstimation,skipIndex=seq(1,nAR))
 
 	ret <- c(rslt$prmtr1,rslt$prmtr0)
 	if(fullEstimation)
@@ -1058,7 +1017,7 @@ carx.singleSimulation <- function()
 
 
 
-carx.simulation <-function(sampleSize=100,climit=0,nRep=1,fullEstimation=FALSE){
+carx.simulation <-function(sampleSize=100,ll=-1,ul=1,nRep=1,fullEstimation=FALSE){
 	args <- commandArgs(TRUE)
 	if(length(args) > 0)
 	{
@@ -1093,7 +1052,7 @@ carx.simulation <-function(sampleSize=100,climit=0,nRep=1,fullEstimation=FALSE){
 		censorRate <- censorRate + sum(dat$y < climit)
 		#break
 		#write.csv(dat$y,"y2.dat") #write.csv(dat$x,"y2.dat") #write.csv(dat$y,"y2.dat")
-		rslt <- carx.default(dat$y,dat$x,dat$censorIndicator,dat$censorLimit,nAR, getCI=fullEstimation ,skipIndex=seq(1,nAR))
+		rslt <- carx.default(dat$y,dat$x,dat$censorIndicator,dat$lowerCensorLimit,dat$upperCensorLimit, nAR, getCI=fullEstimation ,skipIndex=seq(1,nAR))
 		#print(rslt)
 		estPrmtr[i,] <- c(rslt$coefficients,rslt$sigma)
 		estPrmtrNaive[i,] <- rslt$prmtr0
@@ -1148,4 +1107,4 @@ carx.simulation <-function(sampleSize=100,climit=0,nRep=1,fullEstimation=FALSE){
 	return(rsltStr)
 }
 
-#carx.singleSimulation()
+carx.singleSimulation()

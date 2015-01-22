@@ -379,4 +379,73 @@ realDataAnalysis <- function(fileDes, arOrder,models = NULL, outputPrefix="",mod
 	ret
 }
 
+outlierDetection <- function(model){
+	message("detecting outliers")
+	nSample <- 10000
+	threshold <- 0.025/model$nObs
+	eps <- rnorm(nSample,0,model$sigma)
+	trend <- model$x%*%model$prmtrEV
+	covEta <- computeCovAR(model$prmtrAR, model$sigma)
+	nObs <- model$nObs
+	nAR <- model$nAR
+	prmtrAR <- model$prmtrAR
+	skipIndex <- model$skipIndex
+	y <- model$y
+	censorIndicator <- model$censorIndicator
+	censorLimit <- model$censorLimit
+	y[censorIndicator] <- censorLimit[censorIndicator]
+
+
+	pValues <- numeric(nObs)
+	pValues[skipIndex] <- 1
+
+	for(idx in seq(1,nObs)[-skipIndex])
+	{
+		#message(sprintf("checking %i",idx))
+		wkm <- y[(idx-1):(idx-nAR)]
+		tmpCensorIndicator <- censorIndicator[(idx-1):(idx-nAR)]
+		nCensored <- sum(tmpCensorIndicator)
+		if(nCensored)   #at least one is censored
+		{
+			if( nCensored < nAR ) #not all are censored
+			{ 
+				conditionalIndex <- which(!tmpCensorIndicator)
+				tmpY <- y[(idx-1):(idx-nAR)][conditionalIndex] 
+				tmpM <- trend[(idx-1):(idx-nAR)]
+				cdist <- conditionalDistMvnorm(tmpY, conditionalIndex,tmpM,covEta[-1,-1])
+				tmpMean <- cdist$'mean' 
+				tmpVar <- cdist$'var' 
+			}else{ 
+				tmpMean <- trend[(idx-1):(idx-nAR)]
+				tmpVar <- covEta[-1,-1]
+			}
+			tmpCensorLimit <- censorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator]
+			#print(tmpMean)
+			#print(tmpVar)
+			smpl <- rtmvnorm(nSample,tmpMean,tmpVar,upper=tmpCensorLimit,algorithm="gibbs")
+			smpl <- as.matrix(smpl)
+			#print(smpl)
+			ySmpl <- numeric(nSample)
+			for(i in 1:nSample){
+				wkm[tmpCensorIndicator] <- smpl[i,]
+				ySmpl[i] <- trend[idx] + (wkm - trend[(idx-1):(idx-nAR)])%*%prmtrAR + eps[i]
+			}
+			pU <- sum(ySmpl > y[idx])/nSample
+			pL <- sum(ySmpl < y[idx])/nSample
+		}
+		else{
+			r <- y[idx]-trend[idx] - (wkm-trend[(idx-1):(idx-nAR)])%*%prmtrAR
+			r <- r/model$sigma
+			pU <- pnorm(r,lower.tail=FALSE)
+			pL <- pnorm(r,lower.tail=TRUE)
+		}
+		pValues[idx] <- min(pU,pL)
+	}
+	minP <- min(pValues)
+	if( minP <= threshold ){
+		i <- which(pValues == minP)
+		i
+	} else
+		-1
+}
 
