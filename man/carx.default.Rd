@@ -7,18 +7,22 @@
 and optionally compute the standard error or confidence intervals of parameter estimates
 by parametric bootstrap.}
 \usage{
-\method{carx}{default}(y, x, censorIndicator, censorLimit, nAR, tol = 1e-04,
-  max.iter = 500, getCI = FALSE, alpha = 0.95, nBootstrapSample = 1000,
-  useGoodRes = FALSE, skipIndex = NaN)
+\method{carx}{default}(y, x, censorIndicator, lowerCensorLimit,
+  upperCensorLimit, nAR, tol = 1e-04, max.iter = 100, getCI = FALSE,
+  alpha = 0.95, nBootstrapSample = 10, useGoodRes = FALSE,
+  skipIndex = NULL)
 }
 \arguments{
 \item{y}{a vector of regressors}
 
 \item{x}{a matrix of covariances}
 
-\item{censorIndicator}{a vector of 0/1's indicating whether the corresponding y is censored}
+\item{censorIndicator}{a vector of -1,0,1's indicating that the corresponding y is
+left-censored, not censored, or right-censored.}
 
-\item{censorLimit}{a vector of censor limits for each y}
+\item{lowerCensorLimit}{a vector of lower censor limits for each y or a number assuming uniform limit}
+
+\item{upperCensorLimit}{a vector of upper censor limits for each y or a number assuming uniform limit}
 
 \item{nAR}{the order of AR model for the regression errors}
 
@@ -35,6 +39,8 @@ by parametric bootstrap.}
 \item{useGoodRes}{bool value to indicate if use estimated residuals to bootstrap the confidence interval, default = FALSE}
 
 \item{skipIndex}{a vector of indices indicating indices to be skipped, as calculating the conditional log-likelihood need some initial values to start, also is the initial values to calculate the conditional log-likelihood, useful if there are multiple segment of series in the whole series.}
+
+\item{censorLimit}{a vector of censor limits for each y}
 }
 \value{
 a CARX object of the estimated model

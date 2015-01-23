@@ -449,3 +449,134 @@ outlierDetection <- function(model){
 		-1
 }
 
+
+
+carx.simulation_bak <-function(trueEV=c(0.2,0.4), 
+						   trueAR=c(0.1,0.3,-0.2), 
+						   trueSigma=sqrt(0.5),
+						   ll=-1,
+						   ul=1, 
+						   sampleSize=100,
+						   nRep=1000,
+						   fullEstimation=FALSE)
+{
+	  args <- commandArgs(TRUE)
+	  if(length(args) > 0)
+	  {
+			for(i in 1:length(args))
+			{
+				  eval(parse(text = args[i]))
+			}
+	  }
+	  dir.create(paste0('./sim_n',sampleSize,'_nRep', nRep,'_c',climit))
+	  cdir <- getwd()
+	  setwd(paste0('./sim_n',sampleSize,'_nRep', nRep,'_c',climit))
+
+	  nAR <- length(trueAR)
+	  truePrmtr <- c(trueAR,trueEV,trueSigma)
+	  nPrmtr <- length(truePrmtr)
+
+	  prmtrEstd <- matrix(0,nRep,nPrmtr)
+	  prmtrInit <- matrix(0,nRep,nPrmtr)
+	  estCI <- matrix(0,nRep,2*nPrmtr)
+	  coverage <- numeric(nPrmtr)
+
+	  simEst <-function(iRep)
+	  {
+			dat <- carx.simulate(sampleSize, trueAR, trueEV, trueSigma, climit, seed=37513*i)
+			censorRate <- censorRate + sum(dat$y < climit)
+			rslt <- carx.default(dat$y,dat$x,dat$censorIndicator,dat$lowerCensorLimit,dat$upperCensorLimit, nAR, getCI=fullEstimation ,skipIndex=seq(1,nAR))
+            prmtrEstd[i,] <- c(rslt$coefficients,rslt$sigma)
+			prmtrInit[i,] <- rslt$prmtr0
+            ret <- c(censorRate,rslt$prmtrInit,rslt$prmtrEstd)
+			if(fullEstimation)
+			{
+				  ci <- rslt$CI
+				  ret <- c(ret, ci[,1])
+				  ret <- c(ret, ci[,2])
+				  coverage <- (truePrmtr >= ci[,1])*(truePrmtr <= ci[,2])
+				  ret <- c(ret,coverage)
+			}
+			ret
+	  }
+
+	  iter <- 1:nRep
+	  mclapply(iter,simEst)
+
+	  t0 <- proc.time()
+	  censorRate <- 0
+	  for(i in 1:nRep)
+	  {
+			message(sprintf("nRep: %i",i))
+			dat <- carx.simulate(sampleSize, trueAR, trueEV, trueSigma, climit, seed=37513*i)
+			censorRate <- censorRate + sum(dat$y < climit)
+			#break
+			#write.csv(dat$y,"y2.dat") #write.csv(dat$x,"y2.dat") #write.csv(dat$y,"y2.dat")
+			rslt <- carx.default(dat$y,dat$x,dat$censorIndicator,dat$lowerCensorLimit,dat$upperCensorLimit, nAR, getCI=fullEstimation ,skipIndex=seq(1,nAR))
+			#print(rslt)
+			prmtrEstd[i,] <- c(rslt$coefficients,rslt$sigma)
+			prmtrInit[i,] <- rslt$prmtr0
+
+			if(fullEstimation)
+			{
+				  ci <- rslt$CI
+				  estCI[i,] <- as.vector(ci)
+				  coverage <- coverage + (truePrmtr >= ci[,1])*(truePrmtr <= ci[,2])
+			}
+	  }
+	  censorRate <- censorRate/(nRep*sampleSize)
+	  message(sprintf("climit %f, censor rate %f \n", climit, censorRate))
+
+	  write.csv(prmtrEstd, paste0('n_',sampleSize,'_nRep', nRep,'_c',climit,'_estdPrmtr.csv'), row.names=FALSE,col.names=FALSE)
+	  write.csv(prmtrInit, paste0('n_',sampleSize,'_nRep', nRep,'_c',climit,'_estdPrmtrNaive.csv'), row.names=FALSE,col.names=FALSE)
+	  if(fullEstimation)
+	  {
+			coverage <- coverage*1.0/nRep
+			write.csv(coverage, paste0('n_',sampleSize,'_nRep', nRep,'_c',climit,'_coverageRate.csv'), row.names=FALSE,col.names=FALSE)
+			write.csv(estCI, paste0('n_',sampleSize,'_nRep', nRep,'_c',climit,'_estdCI.csv'), row.names=FALSE,col.names=FALSE)
+	  }
+
+
+	  m0 <- colMeans(prmtrInit)
+	  s0 <- colSds(prmtrInit)
+	  m <- colMeans(prmtrEstd)
+	  s <- colSds(prmtrEstd)
+
+	  cat(censorRate, file="resultStr.txt",append=TRUE,sep="\n")
+
+	  rsltStr0 <- ""
+	  rsltStr <- ""
+
+	  for( i in seq(1,nPrmtr))
+	  {
+			rsltStr0 <- paste0(rsltStr0, sprintf( "%6.4f (%6.4f)",m0[i],s0[i]))
+			rsltStr <- paste0(rsltStr, sprintf( "%6.4f (%6.4f) [%6.4f%%]",m[i],s[i],coverage[i]))
+			if(i < nPrmtr)
+			{
+				  rsltStr0 <- paste0(rsltStr0, " & " )
+				  rsltStr <- paste0(rsltStr, " & " )
+			}
+	  }
+	  print(rsltStr)
+	  cat(rsltStr,file="resultStr.txt",append=TRUE,sep="\\\\\n")
+	  cat(rsltStr0,file="resultStr.txt",append=TRUE,sep="\\\\\n")
+
+	  summarizeResult(sampleSize,prmtrEstd,paste0('n',sampleSize,'_nRep', nRep,'_c',climit))
+	  summarizeResult(sampleSize,prmtrInit,paste0('n',sampleSize,'_nRep', nRep,'_c',climit,'_naive'))
+	  setwd(cdir)
+	  return(rsltStr)
+}
+
+setResiduals_old <- function(){
+			wkMean2 <- wkMean
+			index <- seq(1,nObs)[-skipIndex]
+			for(i in 1:(nAR+1)){
+				  wkMean2[index,i] <- wkMean2[index,i] - trend[(index+1-i)]
+			}
+			ret <- as.vector(wkMean2 %*% c(1,-prmtrAREstd))
+			#ret[is.na(ret)] <- 0  # the residuals on skipIndex are not defined and assigned to be zero
+			ret[skipIndex] <-  0 # the residuals on skipIndex are not defined and assigned to be zero
+			#message(sprintf("number of nan's in residuals: %d\n",sum(is.na(ret))))
+			res <<- ret
+	  }
+

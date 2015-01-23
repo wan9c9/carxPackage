@@ -4,8 +4,13 @@
 \name{carx}
 \alias{carx}
 \alias{carx-package}
-\title{carx: A package for estimating censored regression models with autoregressive residuals}
+\title{\code{carx}: A package for estimating the parameters of Censored Auto-Regressive model with eXogenous (CARX).}
 \description{
-carx: A package for estimating censored regression models with autoregressive residuals
+\code{carx}: A package for estimating the parameters of Censored Auto-Regressive model with eXogenous (CARX)
+covariates, or it can be thought as regression models with possibly censored responses and autoregressive residuals
+\code{carx} allows left-censoring, right-censoring or double-censoring of the response variable \code{y},
+where whether the corresponding \code{y_t} is censored or not is recorded in the variable \code{censorIndicator},
+which takes value -1, 0, and 1 if it is left-censored, not censored, and right-censored, respectively.
+The censoring limit is recorded in the variable \code{censorLimit}.
 }
 

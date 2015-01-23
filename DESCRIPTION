@@ -4,11 +4,12 @@ Version: 0.0.0.9000
 Authors@R: c(
 	person("Chao", "Wang", , "chaowang@connect.hku.hk", role = c("aut", "cre")),
 	person("Kung-Sik", "Chan", , "kchan@stat.uiowa.edu", role = c("aut", "cre")))
-Description: This package implements an estimation procedure to estimate the 
+Description: This package implements an estimation procedure to estimate the
     CARX model.
-Depends: R (>= 3.1.2)
+Depends: R (>= 3.1.1)
 License: What license is it under?
 LazyData: true
-Imports:
+Imports: 
     tmvtnorm,
     stats
+Suggests: testthat
