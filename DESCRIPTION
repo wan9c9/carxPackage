@@ -1,5 +1,5 @@
 Package: carxPackage
-Title: Censored Regression with Auto-Regressive Residuals
+Title: Censored Auto-Regression with Exogenous Covariates 
 Version: 0.0.0.9000
 Authors@R: c(
 	person("Chao", "Wang", , "chaowang@connect.hku.hk", role = c("aut", "cre")),
@@ -7,9 +7,11 @@ Authors@R: c(
 Description: This package implements an estimation procedure to estimate the
     CARX model.
 Depends: R (>= 3.1.1)
-License: What license is it under?
+License: GPL V3
 LazyData: true
 Imports: 
+    parallel,
+    matrixStats,
     tmvtnorm,
     stats
 Suggests: testthat
