@@ -803,12 +803,17 @@ plotData <- function( carxData,timeAxis=NULL)
 
 
 
-plot.carx <- function(object,transformFun=NULL,xAxisVar=NULL,xlab="",ylab="",saveFig=NULL, outliers=NULL,...)
+plot.carx <- function(object,transformFun=NULL,xAxisVar=NULL,xlab="Index",ylab="Observations",saveFig=NULL, outliers=NULL,...)
 {
     if(!is.null(saveFig))
     {
-        setEPS()
-        postscript(saveFig)
+	    if(substring(saveFig,nchar(saveFig)-3) == ".eps")
+	    {
+		    setEPS()
+                    postscript(saveFig)
+	    }
+	    else if (substring(saveFig,nchar(saveFig)-3) == ".svg")
+		    svg(saveFig)
     }
 
 	yh <- predict(object)
@@ -818,8 +823,10 @@ plot.carx <- function(object,transformFun=NULL,xAxisVar=NULL,xlab="",ylab="",sav
 	ylim <- range(c(y,yh),na.rm=TRUE)
 
 	#y[object$censorIndicator] <- NA
-	y[object$censorIndicator>0] <- object$upperCensorLimit[object$censorIndicator>0]
-	y[object$censorIndicator<0] <- object$lowerCensorLimit[object$censorIndicator>0]
+	if( any(object$censorIndicator>0) ) 
+		y[object$censorIndicator>0] <- object$upperCensorLimit[object$censorIndicator>0]
+	if( any(object$censorIndicator<0) ) 
+		y[object$censorIndicator<0] <- object$lowerCensorLimit[object$censorIndicator<0]
 
 	if(is.null(xAxisVar))
 	{
@@ -830,26 +837,20 @@ plot.carx <- function(object,transformFun=NULL,xAxisVar=NULL,xlab="",ylab="",sav
 	if(is.null(transformFun))
 	{
 		yrange <- ylim
-		plot(as.zoo(as.ts(zoo(y, xAxisVar))), lty=1,xlab=xlab,ylab=ylab,ylim=ylim,col='black')
-		#plot(xAxisVar,y,'l',lty=1,xlab=xlab,ylab=ylab,ylim=ylim)
-		lines(as.zoo(as.ts(zoo(yh, xAxisVar))), lty=2,col='blue') #xlab=xlab,ylab=ylab,ylim=ylim)
-		#lines(xAxisVar,yh,'l',lty=2,col='blue')
-		lines(as.zoo(as.ts(zoo(object$lowerCensorLimit, xAxisVar))),lty=1,col="red")
-		lines(as.zoo(as.ts(zoo(object$upperCensorLimit, xAxisVar))),lty=1,col="red")
-		#lines(xAxisVar[object$censorIndicator],object$censorLimit[object$censorIndicator],col="red",pch='*')
+		plot(as.zoo(as.ts(zoo(y, xAxisVar))), lty=1,xlab=xlab,ylab=ylab,ylim=ylim,col='black',...)
+		lines(as.zoo(as.ts(zoo(yh, xAxisVar))), lty=2,col='blue')
+
+		lines(as.zoo(as.ts(zoo(object$lowerCensorLimit, xAxisVar))),lty=3,col="red")
+		lines(as.zoo(as.ts(zoo(object$upperCensorLimit, xAxisVar))),lty=4,col="red")
 	}else{
 		yrange <- transformFun(ylim)
-		plot(as.zoo(as.ts(zoo(transformFun(y), xAxisVar))), lty=1,xlab=xlab,ylab=ylab,ylim=transformFun(ylim))
-		#plot(as.zoo(as.ts(zoo(transformFun(y),xAxisVar))),'l',lty=1,xlab=xlab,ylab=ylab)
-		#plot(xAxisVar,transformFun(y),'l',lty=1,xlab=xlab,ylab=ylab,ylim=transformFun(ylim))
-		lines(as.zoo(as.ts(zoo(transformFun(yh), xAxisVar))), lty=2,col='blue') #xlab=xlab,ylab=ylab,ylim=ylim)
-		#lines(xAxisVar,transformFun(yh),lty=2,col='blue')
-		lines(as.zoo(as.ts(zoo(transformFun(object$lowerCensorLimit), xAxisVar))),lty=1,col="red")
-		lines(as.zoo(as.ts(zoo(transformFun(object$upperCensorLimit), xAxisVar))),lty=1,col="red")
-		#lines(xAxisVar,transformFun(object$censorLimit),lty=1,col="red")
-		#lines(xAxisVar[object$censorIndicator],transform(object$censorLimit[object$censorIndicator]),col="red",pch='*')
+		plot(as.zoo(as.ts(zoo(transformFun(y), xAxisVar))), lty=1,xlab=xlab,ylab=ylab,ylim=transformFun(ylim),...)
+		lines(as.zoo(as.ts(zoo(transformFun(yh), xAxisVar))), lty=2,col='blue')
+		lines(as.zoo(as.ts(zoo(transformFun(object$lowerCensorLimit), xAxisVar))),lty=3,col="red")
+		lines(as.zoo(as.ts(zoo(transformFun(object$upperCensorLimit), xAxisVar))),lty=4,col="red")
 	}
-	legend(xrange[2]*(0.7),yrange[2]*0.7,legend=c(ylab,'Fitted value','Lower censor limit','Upper censor limit'),lty=c(1,2,1,1),col=c('black','blue','red','red'))
+	legend(xrange[1],yrange[2]*0.9,legend=c(ylab,'Fitted value','Lower censor limit','Upper censor limit'),lty=c(1,2,3,4),col=c('black','blue','red','red'))
+	#legend(xrange[2]*(0.7),yrange[2]*0.9,legend=c(ylab,'Fitted value','Lower censor limit','Upper censor limit'),lty=c(1,2,1,1),col=c('black','blue','red','red'))
 	if(!is.null(outliers)) abline(v=xAxisVar[outliers],col="red",lty=2)
 	if(!is.null(saveFig))
         dev.off()
@@ -961,6 +962,8 @@ carx.simulation <-function(trueEV=c(0.2,0.4),
                alpha=0.95,
 			   fullEstimation=T)
 {
+	message(c("Simulation study begins at ",date()))
+	t0 <- proc.time()
 	require(matrixStats)
 	args <- commandArgs(TRUE)
 	if(length(args) > 0)
@@ -1003,7 +1006,12 @@ carx.simulation <-function(trueEV=c(0.2,0.4),
 	}
 
     if(nRep == 1)
-        return(simEst(nRep))
+    {
+	    message(sprintf("Time used:"))
+	    print(proc.time()-t0)
+	    message(c("Simulation study ends at ",date())) 
+	    return(simEst(nRep))
+    }
 
 	iter <- 1:nRep
 	rslt <- mclapply(iter,simEst,mc.cores=detectCores())
@@ -1063,6 +1071,10 @@ carx.simulation <-function(trueEV=c(0.2,0.4),
 		       )
 		message(m)
 	}
+	message(sprintf("Time used:"))
+	print(proc.time()-t0)
+	message(c("Simulation study ends at ",date()))
+	    
 	return(rslt)
 }
 
