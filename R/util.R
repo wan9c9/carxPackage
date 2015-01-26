@@ -580,3 +580,155 @@ setResiduals_old <- function(){
 			res <<- ret
 	  }
 
+
+carx.singleSimulation <- function(iRep=1)
+{
+	trueEV <- c(0.2,0.4)
+	trueAR <- c(0.1,0.3,-0.2)
+	trueSigma <- sqrt(0.5)
+	sampleSize <- 100
+	lcl <- -1.0
+	ucl <- 1.5
+	#iRep <- 1
+	fullEstimation <- T
+
+	args <- commandArgs(TRUE)
+	if(length(args) > 0)
+	{
+		for(i in 1:length(args))
+		{
+			eval(parse(text = args[i]))
+		}
+	}
+
+
+	nAR <- length(trueAR)
+	truePrmtr <- c(trueEV,prmtrAR,trueSigma)
+	nPrmtr <- length(truePrmtr)
+	lowercl <- rep(lcl, sampleSize)
+	uppercl <- rep(ucl, sampleSize)
+
+
+	dat <- carx.simulate(sampleSize, trueAR, trueEV, trueSigma, lowercl, uppercl, seed=37513*iRep)
+	#print(dat)
+
+	rslt <- carx.default(dat$y,dat$x,dat$censorIndicator,dat$lowerCensorLimit,dat$upperCensorLimit, nAR, getCI=fullEstimation,skipIndex=seq(1,nAR))
+
+	ret <- c(rslt$prmtrEstd,rslt$prmtrInit)
+	if(fullEstimation)
+	{
+		ci <- rslt$CI
+		ret <- c(ret, ci[,1])
+		ret <- c(ret, ci[,2])
+		coverage <- (truePrmtr >= ci[,1])*(truePrmtr <= ci[,2])
+		ret <- c(ret,coverage)
+	}
+
+	d <- paste0('./sim_n',sampleSize,'_l_',lcl,'_u_',ucl)
+	dir.create(d,showWarnings=FALSE)
+	cdir <- getwd()
+	setwd(d)
+	f <- file(paste0(toString(iRep),".txt"))
+	writeLines(paste(ret,collapse=' '),f)
+	close(f)
+	setwd(cdir)
+	rslt
+}
+
+carx.prmtrStr <- function(object,pC=NULL){
+	prmtrStr <- ""
+	prmtrs <- summary(object)$coefficients
+
+	npar <- object$npar
+	if(!is.null(object$CI))
+	{
+		tmp <- t(rbind(object$prmtrEstd,t(object$CI)))
+		if(is.null(pC)){
+			for( i in 1:npar ){
+				prmtrStr <- paste( prmtrStr, ,sprintf("%s (%s, %s)", signif(tmp[i,1],3),signif(tmp[i,2],2),signif(tmp[i,3],2)) )
+				if( i < npar ){
+					prmtrStr <- paste( prmtrStr ," & ")
+				}
+			}
+		}
+		else{
+			#get AR prmtrs
+			prmtrStr <- paste(prmtrStr, "\\pbox{4cm}{")
+			for( i in 1:pC[1]){
+				vals <- prmtrs[paste0("AR",i),]
+				prmtrStr <- paste(prmtrStr, sprintf("%s (%s, %s) ", toString(signif(vals["Estimate"],3)),toString(signif(vals["lowerCI"],2)),toString(signif(vals["upperCI"],2))) )
+				if( i < pC[1])
+					prmtrStr <- paste(prmtrStr,"\\\\")
+			}
+			prmtrStr <- paste(prmtrStr,"} &")
+			prmtrStr <- paste(prmtrStr, "\\pbox{4cm}{")
+			if(pC[2] == 1){
+				#get intercepts
+
+				vals <- prmtrs["(Intercept)",]
+				prmtrStr <- paste(prmtrStr, sprintf("%s (%s, %s) ", toString(signif(vals["Estimate"],3)),toString(signif(vals["lowerCI"],2)),toString(signif(vals["upperCI"],2))) )
+			}
+			if(pC[2]==4){
+				for( i in 1:pC[2]){
+					vals <- prmtrs[paste0("as.factor(season)",i),]
+					prmtrStr <- paste( prmtrStr, sprintf("%s (%s, %s) ", toString(signif(vals["Estimate"],3)),toString(signif(vals["lowerCI"],2)),toString(signif(vals["upperCI"],2))) )
+					if( i < pC[2] )
+						prmtrStr <- paste(prmtrStr,"\\\\")
+				}
+			}
+			prmtrStr <- paste(prmtrStr,"} &")
+
+			# get trend
+			prmtrStr <- paste(prmtrStr, "\\pbox{5.5cm}{")
+			vals <- prmtrs["tInMonth",]
+			prmtrStr <- paste(prmtrStr, sprintf("%s (%s, %s) ", toString(signif(12*vals["Estimate"],3)),toString(signif(12*vals["lowerCI"],2)),toString(signif(12*vals["upperCI"],2))) )
+			prmtrStr <- paste(prmtrStr,"} &")
+
+
+			#get coefficients for logQ
+			prmtrStr <- paste(prmtrStr, "\\pbox{4cm}{")
+			if(pC[4] == 1)
+			{
+				#no seasonal effect
+				vals <- prmtrs["logQ",]
+				prmtrStr <- paste(prmtrStr, sprintf("%s (%s, %s) ", toString(signif(vals["Estimate"],3)),toString(signif(vals["lowerCI"],2)),toString(signif(vals["upperCI"],2))) )
+			}
+			else{
+
+				for( i in 1: pC[4]){
+					#get names
+					name <- sprintf("logQ:as.factor(season)%i",i)
+					if(is.na( match(name, names(prmtrs[,"Estimate"]))))
+						name <- sprintf("as.factor(season)%i:logQ",i)
+
+					vals <- prmtrs[name, ]
+					prmtrStr <- paste(prmtrStr, sprintf("%s (%s, %s) ", toString(signif(vals["Estimate"],3)),toString(signif(vals["lowerCI"],2)),toString(signif(vals["upperCI"],2))) )
+					if( i < pC[4])
+						prmtrStr <- paste(prmtrStr,"\\\\")
+
+				}
+			}
+			prmtrStr <- paste(prmtrStr,"} &")
+
+			# sigma
+			prmtrStr <- paste(prmtrStr, "\\pbox{4cm}{")
+			vals <- prmtrs["sigma",]
+			prmtrStr <- paste(prmtrStr, sprintf("%s (%s, %s) ", toString(signif(vals["Estimate"],3)),toString(signif(vals["lowerCI"],2)),toString(signif(vals["upperCI"],2))) )
+			prmtrStr <- paste(prmtrStr,"} ")
+		}
+
+	}else{
+		tmp <- object$prmtrEstd
+		for( i in 1:npar ){
+			if(abs(tmp[i]) > 0.01)
+				prmtrStr <- paste(prmtrStr , sprintf("%.2f ",tmp[i]) )
+			else
+				prmtrStr <- paste(prmtrStr , sprintf("%.4f ",tmp[i]) )
+			if( i < npar ){
+				prmtrStr <- paste(prmtrStr , " & ")
+			}
+		}
+	}
+	prmtrStr
+}
+

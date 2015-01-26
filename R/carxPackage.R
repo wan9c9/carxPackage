@@ -11,13 +11,13 @@
 #' @name carx
 NULL
 
-
+require(parallel)
 require(stats)
 require(tmvtnorm)
 require(ggplot2)
 #library(debug)
 #library(R2HTML)
-#library(zoo)
+library(zoo)
 #library(matrixStats)
 
 
@@ -90,7 +90,7 @@ carx <- function(x,...) UseMethod("carx")
 #' by parametric bootstrap.
 
 #' @param y a vector of regressors
-#' @param x a matrix of covariances
+#' @param x a matrix of covariates, or some object which can be coerced to matrix
 #' @param censorIndicator a vector of -1,0,1's indicating that the corresponding y is
 #' left-censored, not censored, or right-censored.
 #' @param censorLimit a vector of censor limits for each y
@@ -102,7 +102,7 @@ carx <- function(x,...) UseMethod("carx")
 #' @param getCI bool value to indicate if the confidence interval for the parameter is needed.
 #' @param alpha numeric value (0,1) to get the confidence interval for the parameter
 #' @param nBootstrapSample number of bootstrap samples when estimating confidence interval for the parameter, default = 1000
-#' @param useGoodRes bool value to indicate if use estimated residuals to bootstrap the confidence interval, default = FALSE
+#' @param useGoodRes bool value to indicate if good values of estimated residuals are used to boostrap sample and thus estimate the confidence interval, might be useful if the normal assumption is not likely to be true, default = FALSE
 #' @param skipIndex a vector of indices indicating indices to be skipped, as calculating the conditional log-likelihood need some initial values to start, also is the initial values to calculate the conditional log-likelihood, useful if there are multiple segment of series in the whole series.
 #' @return a CARX object of the estimated model
 
@@ -113,11 +113,12 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 {
 	verbose <- verbose || options()$verbose
 	nObs <- length(y)
-
+    
+    #standardize censoreIndicator
 	censorIndicator[ censorIndicator>0 ] <- 1
 	censorIndicator[ censorIndicator<0 ] <- -1
 
-	if(is.null(lowerCensorLimit))
+	if(is.null(lowerCensorLimit)) # no lower censoring
 	{
 		if(any(censorIndicator<0))
 			stop("Error in data: lowerCensorLimit is null but there exist left-censored data.")
@@ -134,16 +135,16 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 				lowerCensorLimit <- rep(-Inf,nObs)
 			}
 		}
-		else
+		else #length > 1
 		{
 			if(length(lowerCensorLimit) != nObs)
 				stop("Error: The dimesion of lower censor limit doesn't match that of y.")
 		}
 	}
 
-	if(is.null(upperCensorLimit))
+	if(is.null(upperCensorLimit)) #no upper censoring
 	{
-		if(any(censorIndicator>0))
+		if(any(censorIndicator>0)) #check
 			stop("Error in data: upperCensorLimit is null but there exist right-censored data.")
 		else
 			upperCensorLimit = rep(Inf,nObs)
@@ -151,7 +152,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		if(length(upperCensorLimit) == 1)
 		{
 			if(!is.nan(upperCensorLimit))
-				upperCensorLimit <- rep(upperCensorLimit,nObs) 
+				upperCensorLimit <- rep(upperCensorLimit,nObs)
 			else 
 			{
 				warning("upperCensorLimit is NaN, I will set it to be Inf.")
@@ -164,19 +165,22 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 				stop("Error: The dimesion of upper censor limit doesn't match that of y.")
 		}
 	}
-	if(any(lowerCensorLimit > upperCensorLimit))
-		stop("Error in censor limit: some lower censor limit is bigger than upper censor limit.")
+	if(any(lowerCensorLimit >= upperCensorLimit))
+		stop("Error in censor limit: some lower censor limits are bigger than upper censor limits.")
 
 	if(!is.null(x))
 	{
-		nEV <- dim(x)[2]
+        if(!is.matrix(x)) # x may be a vector
+            x <- as.matrix(x)
 		if(dim(x)[1] != nObs){
 			stop(" The dimension of x doesn't match that of y.")
 			return(NULL)
 		}
+		nEV <- dim(x)[2]
 		externalVariable <- x
 	}else
 	{
+        warning("x is null, I will set x = ones, i.e., reprenting the intercept")
 		nEV <- 1
 		externalVariable <- rep(1,nObs)
 	}
@@ -199,21 +203,19 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		   upperCensorLimit = upperCensorLimit,
 		   skipIndex = skipIndex
 		   )
-
-	#parameters
+    #print(ret)
+	
+    #parameters
 	#generic
+	prmtrEV <- numeric(nEV)
 	prmtrAR <- numeric(nAR)
 	sigmaEps <- numeric(1)
-	prmtrEV <- numeric(nEV)
-
 	#special to store estimated values
+	prmtrEVEstd <- numeric(nEV)
 	prmtrAREstd <- numeric(nAR)
 	sigmaEpsEstd <- numeric(1)
-	prmtrEVEstd <- numeric(nEV)
 
-
-
-	# working data
+	# working space
 	resetWK <- function()
 	{
 		trend <<- numeric(nObs)
@@ -243,14 +245,14 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 
 
 	setInitPrmtrForBootstrap <- function()
-	{
+	{ # set current parameter to be the estimated
 		prmtrEV   <<-   prmtrEVEstd
 		prmtrAR   <<-	prmtrAREstd
 		sigmaEps  <<-	sigmaEpsEstd
 	}
 
 	setEstdPrmtr <- function()
-	{
+	{ # store the estimated parameter
 		prmtrEVEstd   <<- prmtrEV
 		prmtrAREstd   <<- prmtrAR
 		sigmaEpsEstd  <<- sigmaEps
@@ -261,7 +263,6 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		return(ret)
 	}
 
-
 	updateTrend <- function(){
 		trend <<- externalVariable%*%prmtrEV
 	}
@@ -270,7 +271,6 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		covEta <<- computeCovAR(prmtrAR, sigmaEps)
 	}
 
-
 	#calculate the expectations
 	eStep <- function()
 	{
@@ -278,7 +278,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		# expection step
 		# need to 1) calculate the joint distriubtion of AR process
 		#         2) update the trend function/observations
-		#         3) calculat the expection & covariances of the censored observations
+		#         3) calculate the conditional expection & covariances of the censored observations
 		updateCovEta()
 		updateTrend()
 		for(idx in seq(1,nObs)[-skipIndex])
@@ -303,10 +303,11 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 				tmpUpper <- rep(Inf,length = nCensored)
 				censored <- tmpCensorIndicator[tmpCensorIndicator!=0]
 
-				tmpLower[censored>0] <- upperCensorLimit[idx:(idx-nAR)][tmpCensorIndicator>0]
-				tmpUpper[censored<0] <- lowerCensorLimit[idx:(idx-nAR)][tmpCensorIndicator<0]
+				# lower limit is upper censor limit
+                tmpLower[censored>0] <- upperCensorLimit[idx:(idx-nAR)][tmpCensorIndicator>0]
+				# upper limit is lower censor limit 
+                tmpUpper[censored<0] <- lowerCensorLimit[idx:(idx-nAR)][tmpCensorIndicator<0]
 				ret <- mtmvnorm(tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
-
 				wkMean[idx,tmpCensorIndicator!=0] <<- ret$'tmean'
 				wkCov[idx,tmpCensorIndicator!=0,tmpCensorIndicator!=0] <<- ret$'tvar'
 			}
@@ -332,6 +333,8 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		res <<- numeric(nObs)
 		res[skipIndex] <<- NaN
 		res[-skipIndex] <<- y[-skipIndex] - fittedValues[-skipIndex]
+        #for censored observations, we tentatively use the censorlimit as proxy to the observed value and 
+        #get the residuals by censorLimit - fitted, which is not correct, strictly speaking.
 		res[censorIndicator>0] <<- upperCensorLimit[censorIndicator>0] - fittedValues[censorIndicator>0]
 		res[censorIndicator<0] <<- lowerCensorLimit[censorIndicator<0] - fittedValues[censorIndicator<0]
 	}
@@ -390,7 +393,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		for(i in idx){
 			ret <- ret + as.numeric( tmpVec%*%wkCov[i,,]%*%tmpVec )
 		}
-		return( sqrt(ret/(nObs-length(skipIndex))) )
+		return( sqrt(ret/(nObs-nSkip)) )
 	}
 
 	mStep <- function(){
@@ -465,18 +468,18 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		val
 	}
 
-
-
 	setGoodResiduals <- function()
 	{
 		#select residuals where no censored data is involved in calculation,
 		# good residuals may be of little amount if censor rate is high and AR order is large
 		tmp <- rep(FALSE,nObs)
 		for(i in seq(1,nObs)[-skipIndex])
-			tmp[i] <- !sum(censorIndicator[i:(i-nAR)])
+			tmp[i] <- all(censorIndicator[i:(i-nAR)]==0)
 		goodRes <<- getResiduals()[tmp]
 		nG <- length(goodRes)
 		pct <- nG/nObs
+        if(pct < 0.5)
+            warning(sprintf("The percentage of good residuals are too low %f, please consider using estimated parameters to bootstrap confidence interval",pct))
 		#message(sprintf('\nNumber of good residuals:%d, %4.2f%% of %d\n',nG,pct*100,nObs))
 	}
 
@@ -505,9 +508,9 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	bootstrapCI <- function(alpha,nBootstrapSample)
 	{
 		#message(sprintf('Bootstraping CI'))
-		pb <- txtProgressBar(1,nBootstrapSample,style=3)
 		yOriginal <- y #copy y as it will be overwritten
 		tmpResult <- matrix(0,nBootstrapSample,getNPrmtr())
+		pb <- txtProgressBar(1,nBootstrapSample,style=3)
 		for(i in 1:nBootstrapSample){
 			#message(sprintf('Bootstraping CI %i/%i',i,nBootstrapSample))
 			setTxtProgressBar(pb,i)
@@ -556,7 +559,6 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 				tmpLower[censored>0] <- upperCensorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator>0]
 				tmpUpper[censored<0] <- lowerCensorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator<0]
 				ret <- mtmvnorm(tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper,doComputeVariance=FALSE)
-
 				wkm[tmpCensorIndicator!=0] <- ret$'tmean'
 			}
 			fittedValues[idx] <<- trend[idx] + prmtrAR%*%(wkm-trend[(idx-1):(idx-nAR)])
@@ -605,7 +607,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 
 	if(getCI){
 		if(useGoodRes) setGoodResiduals()
-		rnames <- c(names(coeff),"sigma")
+		#rnames <- c(names(coeff),"sigma")
 		ci <- matrix(nrow=getNPrmtr(),ncol=2)
 		covMat <- matrix(nrow=getNPrmtr(),ncol=getNPrmtr())
 		bootstrapCI(alpha,nBootstrapSample)
@@ -764,102 +766,6 @@ summary.carx <- function(object,...){
 	res
 }
 
-carx.prmtrStr <- function(object,pC=NULL){
-	prmtrStr <- ""
-	prmtrs <- summary(object)$coefficients
-
-	npar <- object$npar
-	if(!is.null(object$CI))
-	{
-		tmp <- t(rbind(object$prmtrEstd,t(object$CI)))
-		if(is.null(pC)){
-			for( i in 1:npar ){
-				prmtrStr <- paste( prmtrStr, ,sprintf("%s (%s, %s)", signif(tmp[i,1],3),signif(tmp[i,2],2),signif(tmp[i,3],2)) )
-				if( i < npar ){
-					prmtrStr <- paste( prmtrStr ," & ")
-				}
-			}
-		}
-		else{
-			#get AR prmtrs
-			prmtrStr <- paste(prmtrStr, "\\pbox{4cm}{")
-			for( i in 1:pC[1]){
-				vals <- prmtrs[paste0("AR",i),]
-				prmtrStr <- paste(prmtrStr, sprintf("%s (%s, %s) ", toString(signif(vals["Estimate"],3)),toString(signif(vals["lowerCI"],2)),toString(signif(vals["upperCI"],2))) )
-				if( i < pC[1])
-					prmtrStr <- paste(prmtrStr,"\\\\")
-			}
-			prmtrStr <- paste(prmtrStr,"} &")
-			prmtrStr <- paste(prmtrStr, "\\pbox{4cm}{")
-			if(pC[2] == 1){
-				#get intercepts
-
-				vals <- prmtrs["(Intercept)",]
-				prmtrStr <- paste(prmtrStr, sprintf("%s (%s, %s) ", toString(signif(vals["Estimate"],3)),toString(signif(vals["lowerCI"],2)),toString(signif(vals["upperCI"],2))) )
-			}
-			if(pC[2]==4){
-				for( i in 1:pC[2]){
-					vals <- prmtrs[paste0("as.factor(season)",i),]
-					prmtrStr <- paste( prmtrStr, sprintf("%s (%s, %s) ", toString(signif(vals["Estimate"],3)),toString(signif(vals["lowerCI"],2)),toString(signif(vals["upperCI"],2))) )
-					if( i < pC[2] )
-						prmtrStr <- paste(prmtrStr,"\\\\")
-				}
-			}
-			prmtrStr <- paste(prmtrStr,"} &")
-
-			# get trend
-			prmtrStr <- paste(prmtrStr, "\\pbox{5.5cm}{")
-			vals <- prmtrs["tInMonth",]
-			prmtrStr <- paste(prmtrStr, sprintf("%s (%s, %s) ", toString(signif(12*vals["Estimate"],3)),toString(signif(12*vals["lowerCI"],2)),toString(signif(12*vals["upperCI"],2))) )
-			prmtrStr <- paste(prmtrStr,"} &")
-
-
-			#get coefficients for logQ
-			prmtrStr <- paste(prmtrStr, "\\pbox{4cm}{")
-			if(pC[4] == 1)
-			{
-				#no seasonal effect
-				vals <- prmtrs["logQ",]
-				prmtrStr <- paste(prmtrStr, sprintf("%s (%s, %s) ", toString(signif(vals["Estimate"],3)),toString(signif(vals["lowerCI"],2)),toString(signif(vals["upperCI"],2))) )
-			}
-			else{
-
-				for( i in 1: pC[4]){
-					#get names
-					name <- sprintf("logQ:as.factor(season)%i",i)
-					if(is.na( match(name, names(prmtrs[,"Estimate"]))))
-						name <- sprintf("as.factor(season)%i:logQ",i)
-
-					vals <- prmtrs[name, ]
-					prmtrStr <- paste(prmtrStr, sprintf("%s (%s, %s) ", toString(signif(vals["Estimate"],3)),toString(signif(vals["lowerCI"],2)),toString(signif(vals["upperCI"],2))) )
-					if( i < pC[4])
-						prmtrStr <- paste(prmtrStr,"\\\\")
-
-				}
-			}
-			prmtrStr <- paste(prmtrStr,"} &")
-
-			# sigma
-			prmtrStr <- paste(prmtrStr, "\\pbox{4cm}{")
-			vals <- prmtrs["sigma",]
-			prmtrStr <- paste(prmtrStr, sprintf("%s (%s, %s) ", toString(signif(vals["Estimate"],3)),toString(signif(vals["lowerCI"],2)),toString(signif(vals["upperCI"],2))) )
-			prmtrStr <- paste(prmtrStr,"} ")
-		}
-
-	}else{
-		tmp <- object$prmtrEstd
-		for( i in 1:npar ){
-			if(abs(tmp[i]) > 0.01)
-				prmtrStr <- paste(prmtrStr , sprintf("%.2f ",tmp[i]) )
-			else
-				prmtrStr <- paste(prmtrStr , sprintf("%.4f ",tmp[i]) )
-			if( i < npar ){
-				prmtrStr <- paste(prmtrStr , " & ")
-			}
-		}
-	}
-	prmtrStr
-}
 
 
 predict.carx <- function(object,newdata=NULL,...)
@@ -897,20 +803,23 @@ plotData <- function( carxData,timeAxis=NULL)
 
 
 
-plot.carx <- function(object,transformFun=NULL,xAxisVar=NULL,xlab="",ylab="",saveFig="", outliers=NULL,...)
+plot.carx <- function(object,transformFun=NULL,xAxisVar=NULL,xlab="",ylab="",saveFig=NULL, outliers=NULL,...)
 {
-	setEPS()
-	postscript(saveFig)
+    if(!is.null(saveFig))
+    {
+        setEPS()
+        postscript(saveFig)
+    }
 
 	yh <- predict(object)
 	y <- object$y
 	lcl <- object$lowerCensorLimit
 	ucl <- object$upperCensorLimit
-	ylim <- range(c(y,yh,censorLimit),na.rm=TRUE)
-
+	ylim <- range(c(y,yh),na.rm=TRUE)
 
 	#y[object$censorIndicator] <- NA
-	y[object$censorIndicator] <- object$censorLimit[object$censorIndicator]
+	y[object$censorIndicator>0] <- object$upperCensorLimit[object$censorIndicator>0]
+	y[object$censorIndicator<0] <- object$lowerCensorLimit[object$censorIndicator>0]
 
 	if(is.null(xAxisVar))
 	{
@@ -921,11 +830,12 @@ plot.carx <- function(object,transformFun=NULL,xAxisVar=NULL,xlab="",ylab="",sav
 	if(is.null(transformFun))
 	{
 		yrange <- ylim
-		plot(as.zoo(as.ts(zoo(y, xAxisVar))), lty=1,xlab=xlab,ylab=ylab,ylim=ylim)
+		plot(as.zoo(as.ts(zoo(y, xAxisVar))), lty=1,xlab=xlab,ylab=ylab,ylim=ylim,col='black')
 		#plot(xAxisVar,y,'l',lty=1,xlab=xlab,ylab=ylab,ylim=ylim)
 		lines(as.zoo(as.ts(zoo(yh, xAxisVar))), lty=2,col='blue') #xlab=xlab,ylab=ylab,ylim=ylim)
 		#lines(xAxisVar,yh,'l',lty=2,col='blue')
-		lines(as.zoo(as.ts(zoo(object$censorLimit, xAxisVar))),lty=1,col="red")
+		lines(as.zoo(as.ts(zoo(object$lowerCensorLimit, xAxisVar))),lty=1,col="red")
+		lines(as.zoo(as.ts(zoo(object$upperCensorLimit, xAxisVar))),lty=1,col="red")
 		#lines(xAxisVar[object$censorIndicator],object$censorLimit[object$censorIndicator],col="red",pch='*')
 	}else{
 		yrange <- transformFun(ylim)
@@ -934,19 +844,20 @@ plot.carx <- function(object,transformFun=NULL,xAxisVar=NULL,xlab="",ylab="",sav
 		#plot(xAxisVar,transformFun(y),'l',lty=1,xlab=xlab,ylab=ylab,ylim=transformFun(ylim))
 		lines(as.zoo(as.ts(zoo(transformFun(yh), xAxisVar))), lty=2,col='blue') #xlab=xlab,ylab=ylab,ylim=ylim)
 		#lines(xAxisVar,transformFun(yh),lty=2,col='blue')
-		lines(as.zoo(as.ts(zoo(transformFun(object$censorLimit), xAxisVar))),lty=1,col="red")
+		lines(as.zoo(as.ts(zoo(transformFun(object$lowerCensorLimit), xAxisVar))),lty=1,col="red")
+		lines(as.zoo(as.ts(zoo(transformFun(object$upperCensorLimit), xAxisVar))),lty=1,col="red")
 		#lines(xAxisVar,transformFun(object$censorLimit),lty=1,col="red")
 		#lines(xAxisVar[object$censorIndicator],transform(object$censorLimit[object$censorIndicator]),col="red",pch='*')
 	}
-	legend(xrange[2]*(0.7),yrange[2]*0.7,legend=c(ylab,'Fitted value','Censor limit'),lty=c(1,2,1),col=c('black','blue','red'))
+	legend(xrange[2]*(0.7),yrange[2]*0.7,legend=c(ylab,'Fitted value','Lower censor limit','Upper censor limit'),lty=c(1,2,1,1),col=c('black','blue','red','red'))
 	if(!is.null(outliers)) abline(v=xAxisVar[outliers],col="red",lty=2)
-	dev.off()
+	if(!is.null(saveFig))
+        dev.off()
 	#if(saveFig != "")
 	#{
 	#dev.copy2eps(file=saveFig)
 	#dev.off()
 	#}
-
 }
 
 plot.residuals <- function(object,x=NULL,saveFig="",xlab="",ylab="",classify.by=NULL,type="l",lty=1)
@@ -1026,59 +937,6 @@ summarizeResult <- function(sampleSize,rslt, prefix){
 }
 
 
-carx.singleSimulation <- function(iRep=1)
-{
-	trueEV <- c(0.2,0.4)
-	trueAR <- c(0.1,0.3,-0.2)
-	trueSigma <- sqrt(0.5)
-	sampleSize <- 100
-	lcl <- -1.0
-	ucl <- 1.5
-	#iRep <- 1
-	fullEstimation <- T
-
-	args <- commandArgs(TRUE)
-	if(length(args) > 0)
-	{
-		for(i in 1:length(args))
-		{
-			eval(parse(text = args[i]))
-		}
-	}
-
-
-	nAR <- length(trueAR)
-	truePrmtr <- c(trueAR,trueEV,trueSigma)
-	nPrmtr <- length(truePrmtr)
-	lowercl <- rep(lcl, sampleSize)
-	uppercl <- rep(ucl, sampleSize)
-
-
-	dat <- carx.simulate(sampleSize, trueAR, trueEV, trueSigma, lowercl, uppercl, seed=37513*iRep)
-	#print(dat)
-
-	rslt <- carx.default(dat$y,dat$x,dat$censorIndicator,dat$lowerCensorLimit,dat$upperCensorLimit, nAR, getCI=fullEstimation,skipIndex=seq(1,nAR))
-
-	ret <- c(rslt$prmtrEstd,rslt$prmtrInit)
-	if(fullEstimation)
-	{
-		ci <- rslt$CI
-		ret <- c(ret, ci[,1])
-		ret <- c(ret, ci[,2])
-		coverage <- (truePrmtr >= ci[,1])*(truePrmtr <= ci[,2])
-		ret <- c(ret,coverage)
-	}
-
-	d <- paste0('./sim_n',sampleSize,'_l_',lcl,'_u_',ucl)
-	dir.create(d,showWarnings=FALSE)
-	cdir <- getwd()
-	setwd(d)
-	f <- file(paste0(toString(iRep),".txt"))
-	writeLines(paste(ret,collapse=' '),f)
-	close(f)
-	setwd(cdir)
-	rslt
-}
 
 #' provides a simulation study for \code{carx}.
 #'
@@ -1099,8 +957,9 @@ carx.simulation <-function(trueEV=c(0.2,0.4),
 			   lcl=-1,
 			   ucl=1,
 			   sampleSize=100,
-			   nRep=10,
-			   fullEstimation=F)
+			   nRep=1000,
+               alpha=0.95,
+			   fullEstimation=T)
 {
 	require(matrixStats)
 	args <- commandArgs(TRUE)
@@ -1116,7 +975,7 @@ carx.simulation <-function(trueEV=c(0.2,0.4),
 
 
 	nAR <- length(trueAR)
-	truePrmtr <- c(trueAR,trueEV,trueSigma)
+	truePrmtr <- c(trueEV,trueAR,trueSigma)
 	nPrmtr <- length(truePrmtr)
 
 	prmtrEstd <- matrix(0,nRep,nPrmtr)
@@ -1140,18 +999,38 @@ carx.simulation <-function(trueEV=c(0.2,0.4),
 			coverage <- (truePrmtr >= ci[,1])*(truePrmtr <= ci[,2])
 			ret <- c(ret,coverage)
 		}
-		ret
+		list(object=rslt,summary=ret)
 	}
+
+    if(nRep == 1)
+        return(simEst(nRep))
 
 	iter <- 1:nRep
 	rslt <- mclapply(iter,simEst,mc.cores=detectCores())
-	rslt <- do.call(rbind,rslt)
-	#return(rslt)
+    
+    objects <- NULL
+    if(fullEstimation) 
+        summaryList <- matrix(nrow=nRep,ncol=(2+5*nPrmtr))
+    else
+        summaryList <- matrix(nrow=nRep,ncol=(2+2*nPrmtr))
+
+    i <- 1
+    for(r in rslt) 
+    {
+        objects <-c(objects,r$object)
+        summaryList[i,] <- r$summary
+        #summaryList[i,] <- c(summaryList,r$summary)
+        i <- i+1
+    }
+    print(summaryList)
+
+	#rslt <- do.call(rbind,summaryList)
+    rslt <- summaryList
 	#print(rslt)
 	colm <- colMeans(rslt)
 	avgCR <- colm[2]
 	avgEstd <- colm[(2+nPrmtr+1):(2+2*nPrmtr)]
-	std <- colMeans(rslt)
+	std <- colSds(rslt)
 	std <- std[(2+nPrmtr+1):(2+2*nPrmtr)]
 
 	if(fullEstimation)
@@ -1159,10 +1038,22 @@ carx.simulation <-function(trueEV=c(0.2,0.4),
 	else
 		coverageRate <- rep(NaN, nPrmtr)
 
+	summary <- cbind(truePrmtr,avgEstd,std,coverageRate)
+    colnames(summary) <- c('true', 'avg.estd','std.err','coverage.rate')
+    xnames <- paste0('X',1:length(trueEV))
+	rnames <- c(xnames,paste0('AR',1:nAR),"sigma")
+    rownames(summary) <- rnames
 
-	message(sprintf("Average censor rate: %f", avgCR))
+    rslt <- list(nRep=nRep,
+                objects = objects,
+                averageCensorRate=avgCR,
+                alpha = alpha,
+                summary = summary)
+                    
+	message(sprintf("\nReplication: %i\n", nRep))
+	message(sprintf("\nAverage censor rate: %f\n", avgCR))
 	message("                     Simulation Summary        ")
-	message("    true          mean.Estd       std.error     coverage.rate ")
+	message("     true          meanEstd       stdError     coverageRate ")
 	for(i in 1:nPrmtr)
 	{
 		m <- c(sprintf("%10.3f ",truePrmtr[i]),
@@ -1182,7 +1073,7 @@ carx.simulation <-function(trueEV=c(0.2,0.4),
 #rslt
 #summary(rslt)
 
-rslt <- carx.simulation()
+#rslt <- carx.simulation()
 #print(rslt)
 #for(i in 1:10) 
 #carx.singleSimulation(i)
