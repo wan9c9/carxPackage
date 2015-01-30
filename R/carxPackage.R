@@ -21,65 +21,6 @@ library(zoo)
 #library(matrixStats)
 
 
-#' \code{conditionalDistMvnorm} calculates the conditional mean & variance of a random vector following multivariate normal distribution.
-#'
-#' \code{conditionalDistMvnorm} calculates the conditional mean & variance of a sub-vector
-#' of a vector given the rest of known elements, following multivariate normal distribution.
-#' This function calculates the conditional mean & variance of a multivariate normal distribution.
-#' with (meanVec, varMat), conditional on y at indices conditionalIndex.
-#'
-#' @param y a vector to be conditioned on
-#' @param conditionalIndex the index to be conditioned on
-#' @param meanVec the mean vector the joint multivariate normal distribution
-#' @param varMat the variance-covariance matrix of the joint multivariate normal distribution
-#' @return a list consisting of 'mean' and 'var' representing the conditional mean and variance respectively.
-#' @keywords conditional distribution multivariate normal
-#' @export
-#' @examples
-#' conditionalDistMvnorm(c(-0.5,0.5), c(2,4), c(1,2,3,4),matrix(
-#' c(1,0.3,0.2,0.1, 0.3,1,-0.1,0.3,0.2,-0.1,1,0.1,0.1,0.3,0.1,1),
-#' nrow=4,ncol=4,byrow=TRUE))
-
-conditionalDistMvnorm <- function(y, conditionalIndex, meanVec, varMat)
-{
-	sigma11 <- varMat[-conditionalIndex,-conditionalIndex]
-	sigma22 <- varMat[ conditionalIndex, conditionalIndex]
-	sigma12 <- varMat[-conditionalIndex, conditionalIndex]
-	sigma21 <- varMat[ conditionalIndex,-conditionalIndex]
-	invSigma22 <- solve(sigma22)
-	mNew <- meanVec[-conditionalIndex] + as.vector(sigma12 %*% invSigma22 %*%(y - meanVec[conditionalIndex]))
-	vNew <- sigma11 - sigma12 %*% invSigma22 %*% sigma21
-
-	return (list('mean'=mNew,'var' = vNew))
-}
-
-#' compute the covariance matrix of {\eta_t,\cdots,\eta_{t-p}} of the AR model
-#' @param order the order of the AR model
-#' @param sigmaEps the standard deviation of the residuals of the AR model
-#' @return the covariance matrix needed
-computeCovAR <- function(order, sigmaEps)
-{
-	n <- length(order)+1
-	val <- ARMAacf(ar=order, lag.max=n)
-	val <- as.vector(val)
-
-	mat <- matrix(nrow=n,ncol=n)
-	for(i in 1:n)
-	{
-		mat[i,i] <- 1
-		if(i > 1){
-			for(j in 1:(i-1))
-			{
-				mat[i,j] <- val[abs(i-j)+1]
-				mat[j,i] <- mat[i,j]
-			}
-		}
-	}
-	v <- sigmaEps^2/(1-order%*%val[2:n])
-	mat <- v[1,1]*mat
-	return(mat)
-}
-
 
 carx <- function(x,...) UseMethod("carx")
 
@@ -178,11 +119,16 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		}
 		nEV <- dim(x)[2]
 		externalVariable <- x
+        if(all(x==1)) 
+            xIsOne <- TRUE
+        else
+            xIsOne <- FALSE
 	}else
 	{
         warning("x is null, I will set x = ones, i.e., reprenting the intercept")
 		nEV <- 1
 		externalVariable <- rep(1,nObs)
+        xIsOne <- TRUE
 	}
 
 	if(is.null(skipIndex))
@@ -198,6 +144,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 
 	ret = list(y = y,
 		   x = externalVariable,
+           xIsOne = xIsOne,
 		   censorIndicator = censorIndicator,
 		   lowerCensorLimit = lowerCensorLimit,
 		   upperCensorLimit = upperCensorLimit,
@@ -207,11 +154,11 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	
     #parameters
 	#generic
-	prmtrEV <- numeric(nEV)
+	prmtrX <- numeric(nEV)
 	prmtrAR <- numeric(nAR)
 	sigmaEps <- numeric(1)
 	#special to store estimated values
-	prmtrEVEstd <- numeric(nEV)
+	prmtrXEstd <- numeric(nEV)
 	prmtrAREstd <- numeric(nAR)
 	sigmaEpsEstd <- numeric(1)
 
@@ -235,7 +182,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	}
 
 	getPrmtr <- function(){
-		ret <- c(prmtrEV, prmtrAR, sigmaEps)
+		ret <- c(prmtrX, prmtrAR, sigmaEps)
 		return(ret)
 	}
 
@@ -246,25 +193,25 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 
 	setInitPrmtrForBootstrap <- function()
 	{ # set current parameter to be the estimated
-		prmtrEV   <<-   prmtrEVEstd
+		prmtrX   <<-   prmtrXEstd
 		prmtrAR   <<-	prmtrAREstd
 		sigmaEps  <<-	sigmaEpsEstd
 	}
 
 	setEstdPrmtr <- function()
 	{ # store the estimated parameter
-		prmtrEVEstd   <<- prmtrEV
+		prmtrXEstd   <<- prmtrX
 		prmtrAREstd   <<- prmtrAR
 		sigmaEpsEstd  <<- sigmaEps
 	}
 
 	getEstdPrmtr <- function(){
-		ret <- c(prmtrEVEstd, prmtrAREstd, sigmaEpsEstd)
+		ret <- c(prmtrXEstd, prmtrAREstd, sigmaEpsEstd)
 		return(ret)
 	}
 
 	updateTrend <- function(){
-		trend <<- externalVariable%*%prmtrEV
+		trend <<- externalVariable%*%prmtrX
 	}
 
 	updateCovEta <- function(){
@@ -404,14 +351,14 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		prmtrAR <<- newPrmtrAR
 
 		newPrmtrEV <- updatePrmtrEV()
-		delta <- delta + sum(abs(newPrmtrEV - prmtrEV))
-		prmtrEV <<- newPrmtrEV
+		delta <- delta + sum(abs(newPrmtrEV - prmtrX))
+		prmtrX <<- newPrmtrEV
 
 		newSigmaEps <- updateSigmaEps()
 		delta <- delta + abs(newSigmaEps - sigmaEps)
 		sigmaEps <<- newSigmaEps
 
-		#return( delta/sqrt(sum(prmtrAR^2)+sum(prmtrEV^2)+sum(sigmaEps^2)) )
+		#return( delta/sqrt(sum(prmtrAR^2)+sum(prmtrX^2)+sum(sigmaEps^2)) )
 		return( delta )
 	}
 
@@ -437,7 +384,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		delta <- 1.0
 		nIter <- 1
 
-		prmtrEV <<- numeric(nEV)
+		prmtrX <<- numeric(nEV)
 		prmtrAR <<- numeric(nAR)
 		sigmaEps <<- 1
 
@@ -579,14 +526,14 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	setFitted() #must be called before setResiduals, because setResiduals use fittedValues returned by it
 	setResiduals()
 
-	coeff <- c(prmtrEVEstd,prmtrAREstd)
+	coeff <- c(prmtrXEstd,prmtrAREstd)
 	xnames <- colnames(x)
 	if(is.null(xnames))
 		xnames <- paste0('X',1:dim(x)[2])
 	names(coeff) <- c(xnames,paste0('AR',1:nAR))
 
 	ret$coefficients = coeff
-	ret$prmtrEV = prmtrEVEstd
+	ret$prmtrX = prmtrXEstd
 	ret$prmtrAR = prmtrAREstd
 	ret$sigma = sigmaEpsEstd
 
@@ -638,15 +585,15 @@ carx.formula <- function(formula, data=list(),...)
 	est
 }
 
-carx.simulate <- function(nObs, prmtrAR, prmtrEV, sigmaEps, lowerCensorLimit, upperCensorLimit, seed=0){
+carx.simulate <- function(nObs, prmtrAR, prmtrX, sigmaEps, lowerCensorLimit, upperCensorLimit, seed=0){
 	nAR <- length(prmtrAR)
-	nEV <- length(prmtrEV)
+	nEV <- length(prmtrX)
 
 	set.seed(seed)
 	eps <- rnorm(nObs,0, sigmaEps)
 
 	externalVariable <- matrix(rnorm(nObs*nEV), nrow= nObs, ncol = nEV)
-	trend <- externalVariable%*%prmtrEV
+	trend <- externalVariable%*%prmtrX
 
 	eta <- numeric(nObs)
 	y <- numeric(nObs)
@@ -768,19 +715,97 @@ summary.carx <- function(object,...){
 
 
 
-predict.carx <- function(object,newdata=NULL,...)
+predict.carx <- function(object,newdata=NULL,n.ahead=1,nRep=1000,...)
 {
-	if(is.null(newdata))
-		y <- fitted(object)
-	else{
-		if(!is.null(object$formula)){
-			x <- model.matrix(object$formula,newdata)
-		} else
-		{
-			x <- newdata
-		}
-		message("not implemented")
-	}
+    #tt <- terms(object)
+    #if(!inherits(object,"carx")){
+        #warning("calling predict.lm(<fake-carx-object>)...")
+    #}
+    #if(missing(newdata) || is.null(newdata)){
+        #mm <- X <- model.matrix(object)
+        #mmDone <- TRUE
+    #}
+    #else{
+        #Terms <- delete.reponse(tt)
+        #m <- model.frame(Terms,newdata,na.action=na.action
+
+    if( is.null(newdata) && !object$xIsOne)
+        stop("ERROR: newdata supplied is NULL, but the x data in model is not ones.")
+
+    nAR <- object$nAR
+    nObs <- object$nObs
+
+    yPred <- c(y[(nObs-nAR+1):nObs], rep(0,n.ahead))
+
+    if(object$xIsOne)
+    { 
+        newdata <- as.matrix(rep(1,n.ahead))
+    }
+
+    if(dim(newdata)[1] != n.ahead)
+        stop("ERROR: number of rows in x doesn't equal to n.ahead.")
+
+    newdata <- rbind(object$x[(nObs-nAR+1):nObs,],newdata)
+    eta <- object$y[(nObs-nAR+1):nObs] - object$x[(nObs-nAR+1):nObs,]%*%object$prmtrX
+    eta <- c(eta, rep(0,n.ahead))
+
+    tmpCensorIndicator <- object$censorIndicator[nObs:(nObs-nAR+1)] #reverse order
+    nCensored <- sum(tmpCensorIndicator!=0)
+    if(nCensored == 0) #no censoring
+    {
+        predSE <- rep(0,nAR+n.ahead)
+        for(i in 1:n.ahead)
+        {
+            eta[nAR+i] <- eta[(nAR+i-1):i]%*%object$prmtrAR
+            yPred[nAR+i] <- newdata[nAR+i,]%*%object$prmtrX + eta[nAR+i]
+            predSE[nAR+i] <- predSE[(nAR+i-1):i]%*%((object$prmtrAR)^2) + (prmtr$sigma)^2
+        }
+        yPred <- yPred[-(1:nAR)]
+        predSE <- predSE[-(1:nAR)]
+        ## prediction error?
+    }
+    else
+    {#censoring exists
+        idx <- nObs+1
+        wkm <- object$y[(idx-1):(idx-nAR)]
+		covEta <<- computeCovAR(object$prmtrAR, object$sigma)
+        trend <- newdata[nAR:1,]%*%object$prmtrX
+        # at least one is censored
+        if( nCensored < nAR )
+        {
+            conditionalIndex <- which(tmpCensorIndicator==0)
+            tmpY <- object$y[(idx-1):(idx-nAR)][conditionalIndex]
+            tmpM <- trend
+            cdist <- conditionalDistMvnorm(tmpY, conditionalIndex,trend,covEta[-1,-1])
+            tmpMean <- cdist$'mean'
+            tmpVar <- cdist$'var'
+        }else{
+            tmpMean <- trend
+            tmpVar <- covEta[-1,-1]
+        }
+
+        tmpLower <- rep(-Inf,length = nCensored)
+        tmpUpper <- rep(Inf,length = nCensored)
+        censored <- tmpCensorIndicator[tmpCensorIndicator!=0]
+        tmpLower[censored>0] <- object$upperCensorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator>0]
+        tmpUpper[censored<0] <- object$lowerCensorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator<0]
+
+        yCensored <- rtmvnorm(nRep,tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
+        eps <- matrix(rnorm(nRep*n.ahead,0,object$sigma),nrow=nRep,ncol=n.ahead)
+        etaFuture <- matrix(nrow=nRep,ncol=nAR+n.ahead)
+
+        for(iRep in 1:nRep)
+        {
+            etaFuture[iRep,nAR:1] <- object$y[nObs:(nObs-AR+1)]
+            etaFuture[iRep,nAR:1][censored] <- yCensored[iRep,]
+            etaFuture[iRep,nAR:1] <- etaFuture[iRep,nAR:1] - trend 
+
+            for(i in 1:n.ahead)
+                etaFuture[nAR+i] <- etaFuture[(nAR+i-1):i]%*%object$prmtrAR + eps[iRep,i]
+        }
+        yPred <- newdata[-(1:nAR),]%*%object$prmtrX + colMeans(etaFuture[,-(1:nAR)])
+        predSE <- colSds(etaFuture[,-(1:nAR)])
+    }
 	y
 }
 
@@ -803,107 +828,6 @@ plotData <- function( carxData,timeAxis=NULL)
 
 
 
-plot.carx <- function(object,transformFun=NULL,xAxisVar=NULL,xlab="Index",ylab="Observations",saveFig=NULL, outliers=NULL,...)
-{
-    if(!is.null(saveFig))
-    {
-	    if(substring(saveFig,nchar(saveFig)-3) == ".eps")
-	    {
-		    setEPS()
-                    postscript(saveFig)
-	    }
-	    else if (substring(saveFig,nchar(saveFig)-3) == ".svg")
-		    svg(saveFig)
-    }
-
-	yh <- predict(object)
-	y <- object$y
-	lcl <- object$lowerCensorLimit
-	ucl <- object$upperCensorLimit
-	ylim <- range(c(y,yh),na.rm=TRUE)
-
-	#y[object$censorIndicator] <- NA
-	if( any(object$censorIndicator>0) ) 
-		y[object$censorIndicator>0] <- object$upperCensorLimit[object$censorIndicator>0]
-	if( any(object$censorIndicator<0) ) 
-		y[object$censorIndicator<0] <- object$lowerCensorLimit[object$censorIndicator<0]
-
-	if(is.null(xAxisVar))
-	{
-		xAxisVar <- 1:length(yh)
-	}
-
-	xrange <- range(xAxisVar)
-	if(is.null(transformFun))
-	{
-		yrange <- ylim
-		plot(as.zoo(as.ts(zoo(y, xAxisVar))), lty=1,xlab=xlab,ylab=ylab,ylim=ylim,col='black',...)
-		lines(as.zoo(as.ts(zoo(yh, xAxisVar))), lty=2,col='blue')
-
-		lines(as.zoo(as.ts(zoo(object$lowerCensorLimit, xAxisVar))),lty=3,col="red")
-		lines(as.zoo(as.ts(zoo(object$upperCensorLimit, xAxisVar))),lty=4,col="red")
-	}else{
-		yrange <- transformFun(ylim)
-		plot(as.zoo(as.ts(zoo(transformFun(y), xAxisVar))), lty=1,xlab=xlab,ylab=ylab,ylim=transformFun(ylim),...)
-		lines(as.zoo(as.ts(zoo(transformFun(yh), xAxisVar))), lty=2,col='blue')
-		lines(as.zoo(as.ts(zoo(transformFun(object$lowerCensorLimit), xAxisVar))),lty=3,col="red")
-		lines(as.zoo(as.ts(zoo(transformFun(object$upperCensorLimit), xAxisVar))),lty=4,col="red")
-	}
-	legend(xrange[1],yrange[2]*0.9,legend=c(ylab,'Fitted value','Lower censor limit','Upper censor limit'),lty=c(1,2,3,4),col=c('black','blue','red','red'))
-	#legend(xrange[2]*(0.7),yrange[2]*0.9,legend=c(ylab,'Fitted value','Lower censor limit','Upper censor limit'),lty=c(1,2,1,1),col=c('black','blue','red','red'))
-	if(!is.null(outliers)) abline(v=xAxisVar[outliers],col="red",lty=2)
-	if(!is.null(saveFig))
-        dev.off()
-	#if(saveFig != "")
-	#{
-	#dev.copy2eps(file=saveFig)
-	#dev.off()
-	#}
-}
-
-plot.residuals <- function(object,x=NULL,saveFig="",xlab="",ylab="",classify.by=NULL,type="l",lty=1)
-{
-	#if(saveFig != "") jpeg(saveFig)
-	y <- residuals(object)/object$sigma
-	if(is.null(x))
-	{
-		x <- 1:length(y)
-		xlab <- "index"
-	}else{
-		if(typeof(x) == "character")
-		{
-			if(x == 'fitted'){
-				x <- predict(object)
-				xlab <- "Fitted value"
-			}
-		}
-	}
-	plot(x,y,xlab=xlab,ylab=ylab,type=type,lty=lty)
-	abline(h=0,col="black",lty=3)
-	#abline(h=1.96*object$sigma,col="red",lty=3)
-	#abline(h=-1.96*object$sigma,col="red",lty=3)
-
-	if(saveFig != "")
-	{
-		dev.copy2eps(file=saveFig)
-		dev.off()
-	}
-}
-
-plotResAcf <- function(object,saveFig="")
-{
-	setEPS()
-	postscript(saveFig)
-	acf(residuals(object),na.action=na.pass,main="")
-	dev.off()
-	#if(saveFig != "")
-	#{
-	#dev.copy2eps(file=saveFig)
-	#dev.off()
-	#}
-}
-
-
 print.summary.carx <- function(x,...)
 {
 	cat("Call:\n")
@@ -918,165 +842,6 @@ print.summary.carx <- function(x,...)
 }
 
 
-
-summarizeResult <- function(sampleSize,rslt, prefix){
-	nRep <- dim(rslt)[1]
-	nPrmtr <- dim(rslt)[2]
-	#par(mfrow=c(nPrmtr,3))
-	for( i in 1:nPrmtr)
-	{
-		jpeg(paste0(prefix,'_nSample',sampleSize,'_nRep',nRep,'_plot',i,'_hist.jpg'))
-		hist(rslt[,i])
-		dev.off()
-		jpeg(paste0(prefix,'_nSample',sampleSize,'_nRep',nRep,'_plot',i,'_density.jpg'))
-		plot( density(rslt[,i]) )
-		dev.off()
-		jpeg(paste0(prefix,'_nSample',sampleSize,'_nRep',nRep,'_plot',i,'_qqnorm.jpg'))
-		qqnorm(rslt[,i])
-		dev.off()
-	}
-}
-
-
-
-#' provides a simulation study for \code{carx}.
-#'
-#' uses provided parameters and other settings to provide a simulation study.
-#' Note that the exogenous variables are simulated from independent standard normal.
-#' @param trueEV The true parameter (coefficients) for exogenous variable.
-#' @param trueAR The true AR parameter.
-#' @param lcl The lower censor limit.
-#' @param ucl The upper censor limit.
-#' @param sampleSize The sample size.
-#' @param nRep number of replications in the simulation study.
-#' @param fullEstimation bool value indicating if confidence interval by bootstrap 
-#'        is performed.
-
-carx.simulation <-function(trueEV=c(0.2,0.4), 
-			   trueAR=c(0.1,0.3,-0.2), 
-			   trueSigma=sqrt(0.5),
-			   lcl=-1,
-			   ucl=1,
-			   sampleSize=100,
-			   nRep=1000,
-               alpha=0.95,
-			   fullEstimation=T)
-{
-	message(c("Simulation study begins at ",date()))
-	t0 <- proc.time()
-	require(matrixStats)
-	args <- commandArgs(TRUE)
-	if(length(args) > 0)
-	{
-		for(i in 1:length(args))
-		{
-			eval(parse(text = args[i]))
-		}
-	}
-	lowercl <- rep(lcl, sampleSize)
-	uppercl <- rep(ucl, sampleSize)
-
-
-	nAR <- length(trueAR)
-	truePrmtr <- c(trueEV,trueAR,trueSigma)
-	nPrmtr <- length(truePrmtr)
-
-	prmtrEstd <- matrix(0,nRep,nPrmtr)
-	prmtrInit <- matrix(0,nRep,nPrmtr)
-	estCI <- matrix(0,nRep,2*nPrmtr)
-	coverage <- numeric(nPrmtr)
-        
-	#' return numberOfReplication, censorRate, prmrtrInit, prmtrEstd 
-	#' ( lower_ci, upper_ci, coverageIndicator)
-	simEst <-function(iRep)
-	{
-		message(sprintf("Rep:%i",iRep))
-		dat <- carx.simulate(sampleSize, trueAR, trueEV, trueSigma, lowercl, uppercl, seed=37513*iRep)
-		rslt <- carx.default(dat$y,dat$x,dat$censorIndicator,dat$lowerCensorLimit,dat$upperCensorLimit, nAR, getCI=fullEstimation,skipIndex=seq(1,nAR))
-		ret <- c(iRep,rslt$censorRate,rslt$prmtrInit,rslt$prmtrEstd)
-		if(fullEstimation)
-		{
-			ci <- rslt$CI
-			ret <- c(ret, ci[,1])
-			ret <- c(ret, ci[,2])
-			coverage <- (truePrmtr >= ci[,1])*(truePrmtr <= ci[,2])
-			ret <- c(ret,coverage)
-		}
-		list(object=rslt,summary=ret)
-	}
-
-    if(nRep == 1)
-    {
-	    message(sprintf("Time used:"))
-	    print(proc.time()-t0)
-	    message(c("Simulation study ends at ",date())) 
-	    return(simEst(nRep))
-    }
-
-	iter <- 1:nRep
-	rslt <- mclapply(iter,simEst,mc.cores=detectCores())
-    
-    objects <- NULL
-    if(fullEstimation) 
-        summaryList <- matrix(nrow=nRep,ncol=(2+5*nPrmtr))
-    else
-        summaryList <- matrix(nrow=nRep,ncol=(2+2*nPrmtr))
-
-    i <- 1
-    for(r in rslt) 
-    {
-        objects <-c(objects,r$object)
-        summaryList[i,] <- r$summary
-        #summaryList[i,] <- c(summaryList,r$summary)
-        i <- i+1
-    }
-    print(summaryList)
-
-	#rslt <- do.call(rbind,summaryList)
-    rslt <- summaryList
-	#print(rslt)
-	colm <- colMeans(rslt)
-	avgCR <- colm[2]
-	avgEstd <- colm[(2+nPrmtr+1):(2+2*nPrmtr)]
-	std <- colSds(rslt)
-	std <- std[(2+nPrmtr+1):(2+2*nPrmtr)]
-
-	if(fullEstimation)
-		coverageRate <- colm[(2+4*nPrmtr+1):(2+5*nPrmtr)]
-	else
-		coverageRate <- rep(NaN, nPrmtr)
-
-	summary <- cbind(truePrmtr,avgEstd,std,coverageRate)
-    colnames(summary) <- c('true', 'avg.estd','std.err','coverage.rate')
-    xnames <- paste0('X',1:length(trueEV))
-	rnames <- c(xnames,paste0('AR',1:nAR),"sigma")
-    rownames(summary) <- rnames
-
-    rslt <- list(nRep=nRep,
-                objects = objects,
-                averageCensorRate=avgCR,
-                alpha = alpha,
-                summary = summary)
-                    
-	message(sprintf("\nReplication: %i\n", nRep))
-	message(sprintf("\nAverage censor rate: %f\n", avgCR))
-	message("                     Simulation Summary        ")
-	message("     true          meanEstd       stdError     coverageRate ")
-	for(i in 1:nPrmtr)
-	{
-		m <- c(sprintf("%10.3f ",truePrmtr[i]),
-		       sprintf("\t%10.3f ",avgEstd[i]),
-		       sprintf("\t%10.3f ",std[i]), 
-		       sprintf("\t%10.3f ",coverageRate[i])
-		       )
-		message(m)
-	}
-	message(sprintf("Time used:"))
-	print(proc.time()-t0)
-	message(c("Simulation study ends at ",date()))
-	    
-	return(rslt)
-}
 
 
 

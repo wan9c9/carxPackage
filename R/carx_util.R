@@ -30,7 +30,7 @@ conditionalDistMvnorm <- function(y, conditionalIndex, meanVec, varMat)
 	return (list('mean'=mNew,'var' = vNew))
 }
 
-#' compute the covariance matrix of {\eta_t,\cdots,\eta_{t-p}} of the AR model
+#' compute the covariance matrix of \deqn{(\eta_t,\cdots,\eta_{t-p})} of the AR model
 #' @param order the order of the AR model
 #' @param sigmaEps the standard deviation of the residuals of the AR model
 #' @return the covariance matrix needed

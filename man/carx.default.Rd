@@ -9,13 +9,13 @@ by parametric bootstrap.}
 \usage{
 \method{carx}{default}(y, x, censorIndicator, lowerCensorLimit,
   upperCensorLimit, nAR, tol = 1e-04, max.iter = 100, getCI = FALSE,
-  alpha = 0.95, nBootstrapSample = 10, useGoodRes = FALSE,
-  skipIndex = NULL)
+  alpha = 0.95, nBootstrapSample = 1000, useGoodRes = FALSE,
+  skipIndex = NULL, verbose = FALSE)
 }
 \arguments{
 \item{y}{a vector of regressors}
 
-\item{x}{a matrix of covariances}
+\item{x}{a matrix of covariates, or some object which can be coerced to matrix}
 
 \item{censorIndicator}{a vector of -1,0,1's indicating that the corresponding y is
 left-censored, not censored, or right-censored.}
@@ -36,7 +36,7 @@ left-censored, not censored, or right-censored.}
 
 \item{nBootstrapSample}{number of bootstrap samples when estimating confidence interval for the parameter, default = 1000}
 
-\item{useGoodRes}{bool value to indicate if use estimated residuals to bootstrap the confidence interval, default = FALSE}
+\item{useGoodRes}{bool value to indicate if good values of estimated residuals are used to boostrap sample and thus estimate the confidence interval, might be useful if the normal assumption is not likely to be true, default = FALSE}
 
 \item{skipIndex}{a vector of indices indicating indices to be skipped, as calculating the conditional log-likelihood need some initial values to start, also is the initial values to calculate the conditional log-likelihood, useful if there are multiple segment of series in the whole series.}
 
