@@ -1,9 +1,9 @@
 #' \code{carx}: A package for estimating the parameters of Censored Auto-Regressive model with eXogenous covariates (CARX).
 #'
-#' \code{carx}: A package for estimating the parameters of Censored Auto-Regressive model with eXogenous covariates (CARX), 
+#' \code{carx}: A package for estimating the parameters of Censored Auto-Regressive model with eXogenous covariates (CARX),
 #' , or it can be thought as regression models with possibly censored responses and autoregressive residuals
 #' \code{carx} allows left-censoring, right-censoring or double-censoring of the response variable \code{y},
-#' where whether the corresponding \code{y_t} is censored or not is recorded in the variable \code{censorIndicator}, 
+#' where whether the corresponding \code{y_t} is censored or not is recorded in the variable \code{censorIndicator},
 #' which takes value -1, 0, and 1 if it is left-censored, not censored, and right-censored, respectively.
 #' The censoring limit is recorded in the variable \code{censorLimit}.
 #'
@@ -54,8 +54,8 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 {
 	verbose <- verbose || options()$verbose
 	nObs <- length(y)
-    
-    #standardize censoreIndicator
+
+	#standardize censoreIndicator
 	censorIndicator[ censorIndicator>0 ] <- 1
 	censorIndicator[ censorIndicator<0 ] <- -1
 
@@ -67,8 +67,8 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 			lowerCensorLimit = rep(-Inf,nObs)
 	} else{
 		if(length(lowerCensorLimit) == 1)
-		{ 
-			if(!is.nan(lowerCensorLimit)) 
+		{
+			if(!is.nan(lowerCensorLimit))
 				lowerCensorLimit <- rep(lowerCensorLimit,nObs)
 			else
 			{
@@ -94,7 +94,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		{
 			if(!is.nan(upperCensorLimit))
 				upperCensorLimit <- rep(upperCensorLimit,nObs)
-			else 
+			else
 			{
 				warning("upperCensorLimit is NaN, I will set it to be Inf.")
 				upperCensorLimit <- rep(Inf,nObs)
@@ -111,54 +111,54 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 
 	if(!is.null(x))
 	{
-        if(!is.matrix(x)) # x may be a vector
-            x <- as.matrix(x)
+		if(!is.matrix(x)) # x may be a vector
+			x <- as.matrix(x)
 		if(dim(x)[1] != nObs){
 			stop(" The dimension of x doesn't match that of y.")
 			return(NULL)
 		}
-		nEV <- dim(x)[2]
+		nX <- dim(x)[2]
 		externalVariable <- x
-        if(all(x==1)) 
-            xIsOne <- TRUE
-        else
-            xIsOne <- FALSE
+		if(all(x==1))
+			xIsOne <- TRUE
+		else
+			xIsOne <- FALSE
 	}else
 	{
-        warning("x is null, I will set x = ones, i.e., reprenting the intercept")
-		nEV <- 1
+		warning("x is null, I will set x = ones, i.e., reprenting the intercept")
+		nX <- 1
 		externalVariable <- rep(1,nObs)
-        xIsOne <- TRUE
+		xIsOne <- TRUE
 	}
 
 	if(is.null(skipIndex))
 	{
 		skipIndex <- seq(1,nAR)
-		if(verbose) 
+		if(verbose)
 		{
-			message("skip index is constructed as ") 
-			message(skipIndex)
+			message("skip index is constructed as ")
+			message(paste(skipIndex))
 		}
 	}
 	nSkip <- length(skipIndex)
 
 	ret = list(y = y,
 		   x = externalVariable,
-           xIsOne = xIsOne,
+		   xIsOne = xIsOne,
 		   censorIndicator = censorIndicator,
 		   lowerCensorLimit = lowerCensorLimit,
 		   upperCensorLimit = upperCensorLimit,
 		   skipIndex = skipIndex
 		   )
-    #print(ret)
-	
-    #parameters
+	#print(ret)
+
+	#parameters
 	#generic
-	prmtrX <- numeric(nEV)
+	prmtrX <- numeric(nX)
 	prmtrAR <- numeric(nAR)
 	sigmaEps <- numeric(1)
 	#special to store estimated values
-	prmtrXEstd <- numeric(nEV)
+	prmtrXEstd <- numeric(nX)
 	prmtrAREstd <- numeric(nAR)
 	sigmaEpsEstd <- numeric(1)
 
@@ -173,12 +173,12 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 
 		#initialize wkMean
 		for(idx in seq(1,nObs)[-skipIndex])
-			wkMean[idx,] <<- y[idx:(idx-nAR)] 
+			wkMean[idx,] <<- y[idx:(idx-nAR)]
 	}
 	#-------------------------------
 
 	getNPrmtr <- function(){
-		return (nEV + nAR +  1)
+		return (nX + nAR +  1)
 	}
 
 	getPrmtr <- function(){
@@ -251,9 +251,9 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 				censored <- tmpCensorIndicator[tmpCensorIndicator!=0]
 
 				# lower limit is upper censor limit
-                tmpLower[censored>0] <- upperCensorLimit[idx:(idx-nAR)][tmpCensorIndicator>0]
-				# upper limit is lower censor limit 
-                tmpUpper[censored<0] <- lowerCensorLimit[idx:(idx-nAR)][tmpCensorIndicator<0]
+				tmpLower[censored>0] <- upperCensorLimit[idx:(idx-nAR)][tmpCensorIndicator>0]
+				# upper limit is lower censor limit
+				tmpUpper[censored<0] <- lowerCensorLimit[idx:(idx-nAR)][tmpCensorIndicator<0]
 				ret <- mtmvnorm(tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
 				wkMean[idx,tmpCensorIndicator!=0] <<- ret$'tmean'
 				wkCov[idx,tmpCensorIndicator!=0,tmpCensorIndicator!=0] <<- ret$'tvar'
@@ -272,7 +272,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 			wkMean[idx,tmpCensorIndicator<0] <<- lowerCensorLimit[idx:(idx-nAR)][tmpCensorIndicator<0]
 			wkCov[idx,,] <<- 0
 		}
-		#if(verbose) message("E-step Naive done.")
+		if(verbose) message("E-step Naive done.")
 	}
 
 	setResiduals <- function()
@@ -280,8 +280,8 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		res <<- numeric(nObs)
 		res[skipIndex] <<- NaN
 		res[-skipIndex] <<- y[-skipIndex] - fittedValues[-skipIndex]
-        #for censored observations, we tentatively use the censorlimit as proxy to the observed value and 
-        #get the residuals by censorLimit - fitted, which is not correct, strictly speaking.
+		#for censored observations, we tentatively use the censorlimit as proxy to the observed value and
+		#get the residuals by censorLimit - fitted, which is not correct, strictly speaking.
 		res[censorIndicator>0] <<- upperCensorLimit[censorIndicator>0] - fittedValues[censorIndicator>0]
 		res[censorIndicator<0] <<- lowerCensorLimit[censorIndicator<0] - fittedValues[censorIndicator<0]
 	}
@@ -314,7 +314,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		}
 		tmpY <- tmpY[-skipIndex]
 
-		tmpX <- matrix(0,nObs-nSkip,nEV)
+		tmpX <- matrix(0,nObs-nSkip,nX)
 		index <- seq(1,nObs)[-skipIndex]
 		for(idx in 1:(nObs-nSkip)){
 			if (nAR >1){
@@ -380,11 +380,11 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 
 	initPrmtr <- function(tol,max.iter)
 	{
-		if(verbose) message("initializing parameters")
+		if(verbose) message("Initializing parameters")
 		delta <- 1.0
 		nIter <- 1
 
-		prmtrX <<- numeric(nEV)
+		prmtrX <<- numeric(nX)
 		prmtrAR <<- numeric(nAR)
 		sigmaEps <<- 1
 
@@ -425,8 +425,8 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		goodRes <<- getResiduals()[tmp]
 		nG <- length(goodRes)
 		pct <- nG/nObs
-        if(pct < 0.5)
-            warning(sprintf("The percentage of good residuals are too low %f, please consider using estimated parameters to bootstrap confidence interval",pct))
+		if(pct < 0.5)
+			warning(sprintf("The percentage of good residuals are too low %f, please consider using estimated parameters to bootstrap confidence interval",pct))
 		#message(sprintf('\nNumber of good residuals:%d, %4.2f%% of %d\n',nG,pct*100,nObs))
 	}
 
@@ -548,6 +548,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	ret$nObs = nObs
 	ret$logLik = exptdLogLik()
 	ret$nAR = nAR
+	ret$nX = nX
 	ret$npar = getNPrmtr()
 	ret$aic = 2*(-ret$logLik + ret$npar)
 	ret$call = match.call()
@@ -587,12 +588,12 @@ carx.formula <- function(formula, data=list(),...)
 
 carx.simulate <- function(nObs, prmtrAR, prmtrX, sigmaEps, lowerCensorLimit, upperCensorLimit, seed=0){
 	nAR <- length(prmtrAR)
-	nEV <- length(prmtrX)
+	nX <- length(prmtrX)
 
 	set.seed(seed)
 	eps <- rnorm(nObs,0, sigmaEps)
 
-	externalVariable <- matrix(rnorm(nObs*nEV), nrow= nObs, ncol = nEV)
+	externalVariable <- matrix(rnorm(nObs*nX), nrow= nObs, ncol = nX)
 	trend <- externalVariable%*%prmtrX
 
 	eta <- numeric(nObs)
@@ -678,7 +679,8 @@ print.carx <- function(x,...)
 }
 
 #' summarize the fitted model on parameters, residuals and model fit
-summary.carx <- function(object,...){
+summary.carx <- function(object,...)
+{
 	numDig <- function(x,d1,d2){
 		y <- x
 		y[abs(x) > 0.1^d1] <- round(x[abs(x) > 0.1^d1],d1)
@@ -714,120 +716,6 @@ summary.carx <- function(object,...){
 }
 
 
-
-predict.carx <- function(object,newdata=NULL,n.ahead=1,nRep=1000,...)
-{
-    #tt <- terms(object)
-    #if(!inherits(object,"carx")){
-        #warning("calling predict.lm(<fake-carx-object>)...")
-    #}
-    #if(missing(newdata) || is.null(newdata)){
-        #mm <- X <- model.matrix(object)
-        #mmDone <- TRUE
-    #}
-    #else{
-        #Terms <- delete.reponse(tt)
-        #m <- model.frame(Terms,newdata,na.action=na.action
-
-    if( is.null(newdata) && !object$xIsOne)
-        stop("ERROR: newdata supplied is NULL, but the x data in model is not ones.")
-
-    nAR <- object$nAR
-    nObs <- object$nObs
-
-    yPred <- c(y[(nObs-nAR+1):nObs], rep(0,n.ahead))
-
-    if(object$xIsOne)
-    { 
-        newdata <- as.matrix(rep(1,n.ahead))
-    }
-
-    if(dim(newdata)[1] != n.ahead)
-        stop("ERROR: number of rows in x doesn't equal to n.ahead.")
-
-    newdata <- rbind(object$x[(nObs-nAR+1):nObs,],newdata)
-    eta <- object$y[(nObs-nAR+1):nObs] - object$x[(nObs-nAR+1):nObs,]%*%object$prmtrX
-    eta <- c(eta, rep(0,n.ahead))
-
-    tmpCensorIndicator <- object$censorIndicator[nObs:(nObs-nAR+1)] #reverse order
-    nCensored <- sum(tmpCensorIndicator!=0)
-    if(nCensored == 0) #no censoring
-    {
-        predSE <- rep(0,nAR+n.ahead)
-        for(i in 1:n.ahead)
-        {
-            eta[nAR+i] <- eta[(nAR+i-1):i]%*%object$prmtrAR
-            yPred[nAR+i] <- newdata[nAR+i,]%*%object$prmtrX + eta[nAR+i]
-            predSE[nAR+i] <- predSE[(nAR+i-1):i]%*%((object$prmtrAR)^2) + (prmtr$sigma)^2
-        }
-        yPred <- yPred[-(1:nAR)]
-        predSE <- predSE[-(1:nAR)]
-        ## prediction error?
-    }
-    else
-    {#censoring exists
-        idx <- nObs+1
-        wkm <- object$y[(idx-1):(idx-nAR)]
-		covEta <<- computeCovAR(object$prmtrAR, object$sigma)
-        trend <- newdata[nAR:1,]%*%object$prmtrX
-        # at least one is censored
-        if( nCensored < nAR )
-        {
-            conditionalIndex <- which(tmpCensorIndicator==0)
-            tmpY <- object$y[(idx-1):(idx-nAR)][conditionalIndex]
-            tmpM <- trend
-            cdist <- conditionalDistMvnorm(tmpY, conditionalIndex,trend,covEta[-1,-1])
-            tmpMean <- cdist$'mean'
-            tmpVar <- cdist$'var'
-        }else{
-            tmpMean <- trend
-            tmpVar <- covEta[-1,-1]
-        }
-
-        tmpLower <- rep(-Inf,length = nCensored)
-        tmpUpper <- rep(Inf,length = nCensored)
-        censored <- tmpCensorIndicator[tmpCensorIndicator!=0]
-        tmpLower[censored>0] <- object$upperCensorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator>0]
-        tmpUpper[censored<0] <- object$lowerCensorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator<0]
-
-        yCensored <- rtmvnorm(nRep,tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
-        eps <- matrix(rnorm(nRep*n.ahead,0,object$sigma),nrow=nRep,ncol=n.ahead)
-        etaFuture <- matrix(nrow=nRep,ncol=nAR+n.ahead)
-
-        for(iRep in 1:nRep)
-        {
-            etaFuture[iRep,nAR:1] <- object$y[nObs:(nObs-AR+1)]
-            etaFuture[iRep,nAR:1][censored] <- yCensored[iRep,]
-            etaFuture[iRep,nAR:1] <- etaFuture[iRep,nAR:1] - trend 
-
-            for(i in 1:n.ahead)
-                etaFuture[nAR+i] <- etaFuture[(nAR+i-1):i]%*%object$prmtrAR + eps[iRep,i]
-        }
-        yPred <- newdata[-(1:nAR),]%*%object$prmtrX + colMeans(etaFuture[,-(1:nAR)])
-        predSE <- colSds(etaFuture[,-(1:nAR)])
-    }
-	y
-}
-
-
-
-plotData <- function( carxData,timeAxis=NULL)
-{
-	y <- object$y
-	lcl <- object$lowerCensorLimit
-	ucl <- object$upperCensorLimit
-
-	t <- seq(1,length(y))
-	ts.plot(t,y,col="black")
-	lines(t,lcl,col="red")
-	lines(t,ucl,col="red")
-
-}
-
-
-
-
-
 print.summary.carx <- function(x,...)
 {
 	cat("Call:\n")
@@ -842,9 +730,6 @@ print.summary.carx <- function(x,...)
 }
 
 
-
-
-
 # tests
 #rslt <- carx.singleSimulation()
 #rslt
@@ -852,5 +737,5 @@ print.summary.carx <- function(x,...)
 
 #rslt <- carx.simulation()
 #print(rslt)
-#for(i in 1:10) 
+#for(i in 1:10)
 #carx.singleSimulation(i)

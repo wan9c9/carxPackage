@@ -4,9 +4,11 @@ Version: 0.0.0.9000
 Authors@R: c(
 	person("Chao", "Wang", , "chaowang@connect.hku.hk", role = c("aut", "cre")),
 	person("Kung-Sik", "Chan", , "kung-sik-chan@uiowa.edu", role = c("aut", "cre")))
-Description: This package implements an estimation procedure to estimate the
-    \code{carx} model. The CARX
-Depends: R (>= 3.0.0)
+Description: This package implements an estimation procedure to 
+	estimate the Censored Auto-Regressive time series 
+	with eXogenous covariates (CARX) and some other functions that 
+	might be useful.
+Depends: R (>= 1.9.0)
 License: GPL V3
 LazyData: true
 Imports: 

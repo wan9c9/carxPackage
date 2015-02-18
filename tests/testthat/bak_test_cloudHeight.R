@@ -1,4 +1,5 @@
-sfo8903 <- read.csv('../../data/sfo8903.csv',header=TRUE)
+sfo8903 <- read.csv('/home/chao/workspace/carxPackage/data/sfo8903.csv',header=TRUE)
+print(sfo8903)
 sfo8903.dat = sfo8903[,3]
 sfo8903.dat[516]=log(120)#NaN
 sfo8903.dat[540]=2.55 # mean of adjacent values, previous NaN
@@ -14,7 +15,7 @@ lowerCensorLimit <- rep(-Inf,nObs)
 upperCensorLimit <- rep(log(120),nObs)
 x <- rep(1,nObs) #intercept
 censorIndicator <- rep(0,nObs)
-censorIndicator[cloud>=log(120)]  <- 1
+censorIndicator[y>=log(120)]  <- 1
 #no left censoring
 nAR <- 2
 model <- carx(y, x, censorIndicator, lowerCensorLimit, upperCensorLimit, nAR, verbose=T)
