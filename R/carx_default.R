@@ -43,18 +43,18 @@ carx <- function(x,...) UseMethod("carx")
 #' @param getCI bool value to indicate if the confidence interval for the parameter is needed.
 #' @param alpha numeric value (0,1) to get the confidence interval for the parameter
 #' @param nBootstrapSample number of bootstrap samples when estimating confidence interval for the parameter, default = 1000
-#' @param useGoodRes bool value to indicate if good values of estimated residuals are used to boostrap sample and thus estimate the confidence interval, might be useful if the normal assumption is not likely to be true, default = FALSE
 #' @param skipIndex a vector of indices indicating indices to be skipped, as calculating the conditional log-likelihood need some initial values to start, also is the initial values to calculate the conditional log-likelihood, useful if there are multiple segment of series in the whole series.
 #' @return a CARX object of the estimated model
 
 
 carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,nAR,
+												 prmtrX=NULL,prmtrAR=NULL,sigmaEps=NULL,
 			 tol=1e-4,max.iter=100,getCI=FALSE,alpha=0.95,nBootstrapSample=1000,
-			 useGoodRes=FALSE,skipIndex=NULL,verbose=FALSE)
+			 skipIndex=NULL,verbose=FALSE)
 {
 	verbose <- verbose || options()$verbose
 	nObs <- length(y)
-
+  
 	#standardize censoreIndicator
 	censorIndicator[ censorIndicator>0 ] <- 1
 	censorIndicator[ censorIndicator<0 ] <- -1
@@ -154,9 +154,19 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 
 	#parameters
 	#generic
-	prmtrX <- numeric(nX)
-	prmtrAR <- numeric(nAR)
-	sigmaEps <- numeric(1)
+	#prmtrX <- numeric(nX)
+	#prmtrAR <- numeric(nAR)
+	#sigmaEps <- numeric(1)
+  if(is.null(prmtrX) || is.null(prmtrAR) || is.null(sigmaEps) )
+	{
+		prmtrX <- numeric(nX)
+		prmtrAR <- numeric(nAR)
+		sigmaEps <- numeric(1)
+		needInit <- TRUE
+	}
+	else
+	  needInit <- FALSE
+
 	#special to store estimated values
 	prmtrXEstd <- numeric(nX)
 	prmtrAREstd <- numeric(nAR)
@@ -275,22 +285,6 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		if(verbose) message("E-step Naive done.")
 	}
 
-	setResiduals <- function()
-	{
-		res <<- numeric(nObs)
-		res[skipIndex] <<- NaN
-		res[-skipIndex] <<- y[-skipIndex] - fittedValues[-skipIndex]
-		#for censored observations, we tentatively use the censorlimit as proxy to the observed value and
-		#get the residuals by censorLimit - fitted, which is not correct, strictly speaking.
-		res[censorIndicator>0] <<- upperCensorLimit[censorIndicator>0] - fittedValues[censorIndicator>0]
-		res[censorIndicator<0] <<- lowerCensorLimit[censorIndicator<0] - fittedValues[censorIndicator<0]
-	}
-
-
-	getResiduals <- function(){
-		return(res)
-	}
-
 	updatePrmtrAR <- function(){
 		wkMean2 <- wkMean
 		for(i in 1:(nAR+1)){
@@ -305,7 +299,8 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		return( solve(mat,vec) )
 	}
 
-	updatePrmtrEV <- function(){
+	updatePrmtrEV <- function()
+	{
 		if(nAR > 1){
 			tmpY <- wkMean[,1] - wkMean[,-1]%*%prmtrAR
 		}
@@ -362,7 +357,6 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		return( delta )
 	}
 
-
 	estimatePrmtr <- function(tol,max.iter)
 	{
 		if(verbose) message("estimating parameters")
@@ -401,41 +395,13 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 
 	exptdLogLik <- function()
 	{
-		#wkMean2 <- wkMean
-		#for(i in 1:(nAR+1)){
-		#	wkMean2[(nAR+1):nObs,i] <- wkMean2[(nAR+1):nObs,i] - trend[(nAR+2-i):(nObs+1-i)]
-		#}
-		#tmpVec <- c(1,-prmtrAR)
-
-		#ret <- sum( (wkMean2 %*% tmpVec)^2)
-		#for(i in (nAR+1):nObs)
-		#	ret <- ret + t(tmpVec)%*%wkCov%*%tmpVec
-
-		val <- -(nObs - nSkip)*(1+log(sigmaEpsEstd^2))/2
+	  val <- -(nObs - nSkip)*(1+log(sigmaEpsEstd^2))/2
 		val
 	}
 
-	setGoodResiduals <- function()
+	bootstrapSample <- function()
 	{
-		#select residuals where no censored data is involved in calculation,
-		# good residuals may be of little amount if censor rate is high and AR order is large
-		tmp <- rep(FALSE,nObs)
-		for(i in seq(1,nObs)[-skipIndex])
-			tmp[i] <- all(censorIndicator[i:(i-nAR)]==0)
-		goodRes <<- getResiduals()[tmp]
-		nG <- length(goodRes)
-		pct <- nG/nObs
-		if(pct < 0.5)
-			warning(sprintf("The percentage of good residuals are too low %f, please consider using estimated parameters to bootstrap confidence interval",pct))
-		#message(sprintf('\nNumber of good residuals:%d, %4.2f%% of %d\n',nG,pct*100,nObs))
-	}
-
-	bootstrapSample <- function(useGoodRes)
-	{
-		if(useGoodRes)
-			eps <- sample(goodRes, nObs, replace=TRUE)
-		else
-			eps <- rnorm(nObs,0, sigmaEps)
+		eps <- rnorm(nObs,0, sigmaEps)
 
 		updateTrend()
 
@@ -462,7 +428,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 			#message(sprintf('Bootstraping CI %i/%i',i,nBootstrapSample))
 			setTxtProgressBar(pb,i)
 			setInitPrmtrForBootstrap()
-			bootstrapSample(useGoodRes)
+			bootstrapSample()
 			resetWK()
 			estimatePrmtr(tol,max.iter)
 			tmpResult[i,] <- getPrmtr()
@@ -476,55 +442,14 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		y <<- yOriginal #set back observed data
 	}
 
-	setFitted <- function(){
-		updateCovEta()
-		updateTrend()
-		fittedValues <<- numeric(nObs)
-		for(idx in seq(1,nObs)[-skipIndex])
-		{
-			wkm <- y[(idx-1):(idx-nAR)]
-			tmpCensorIndicator <- censorIndicator[(idx-1):(idx-nAR)]
-			nCensored <- sum(abs(tmpCensorIndicator))
-			if(nCensored)
-			{# at least one is censored
-				if( nCensored < nAR )
-				{
-					conditionalIndex <- which(tmpCensorIndicator==0)
-					tmpY <- y[(idx-1):(idx-nAR)][conditionalIndex]
-					tmpM <- trend[(idx-1):(idx-nAR)]
-					cdist <- conditionalDistMvnorm(tmpY, conditionalIndex,tmpM,covEta[-1,-1])
-					tmpMean <- cdist$'mean'
-					tmpVar <- cdist$'var'
-				}else{
-					tmpMean <- trend[(idx-1):(idx-nAR)]
-					tmpVar <- covEta[-1,-1]
-				}
-
-				tmpLower <- rep(-Inf,length = nCensored)
-				tmpUpper <- rep(Inf,length = nCensored)
-				censored <- tmpCensorIndicator[tmpCensorIndicator!=0]
-				tmpLower[censored>0] <- upperCensorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator>0]
-				tmpUpper[censored<0] <- lowerCensorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator<0]
-				ret <- mtmvnorm(tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper,doComputeVariance=FALSE)
-				wkm[tmpCensorIndicator!=0] <- ret$'tmean'
-			}
-			fittedValues[idx] <<- trend[idx] + prmtrAR%*%(wkm-trend[(idx-1):(idx-nAR)])
-		}
-		fittedValues[skipIndex] <<- NaN
-	}
-	getFitted <- function(){
-		return(fittedValues)
-	}
-
 	# begin execution
 	resetWK()
 	#message("initializing parameters")
-	initPrmtr(tol, max.iter)
+	if(needInit) 
+		initPrmtr(tol, max.iter)
 	prmtrInit <- getPrmtr()
 	estimatePrmtr(tol,max.iter)
 	setEstdPrmtr()
-	setFitted() #must be called before setResiduals, because setResiduals use fittedValues returned by it
-	setResiduals()
 
 	coeff <- c(prmtrXEstd,prmtrAREstd)
 	xnames <- colnames(x)
@@ -537,8 +462,6 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	ret$prmtrAR = prmtrAREstd
 	ret$sigma = sigmaEpsEstd
 
-	ret$fitted.values = getFitted()
-	ret$residuals = getResiduals()
 	ret$censorRate = getCensorRate()
 	rnames <- c(names(coeff),"sigma")
 	ret$prmtrInit = prmtrInit
@@ -554,7 +477,6 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	ret$call = match.call()
 
 	if(getCI){
-		if(useGoodRes) setGoodResiduals()
 		#rnames <- c(names(coeff),"sigma")
 		ci <- matrix(nrow=getNPrmtr(),ncol=2)
 		covMat <- matrix(nrow=getNPrmtr(),ncol=getNPrmtr())
@@ -584,39 +506,6 @@ carx.formula <- function(formula, data=list(),...)
 	est$call <- match.call()
 	est$formula <- formula
 	est
-}
-
-carx.simulate <- function(nObs, prmtrAR, prmtrX, sigmaEps, lowerCensorLimit, upperCensorLimit, seed=0){
-	nAR <- length(prmtrAR)
-	nX <- length(prmtrX)
-
-	set.seed(seed)
-	eps <- rnorm(nObs,0, sigmaEps)
-
-	externalVariable <- matrix(rnorm(nObs*nX), nrow= nObs, ncol = nX)
-	trend <- externalVariable%*%prmtrX
-
-	eta <- numeric(nObs)
-	y <- numeric(nObs)
-	eta[1:nAR] <- eps[1:nAR]
-
-	y[1:nAR] <- eps[1:nAR]
-	for(i in (nAR+1):nObs){
-		eta[i] <- eta[(i-1):(i-nAR)] %*% prmtrAR + eps[i]
-		y[i] <- trend[i] + eta[i]
-	}
-	censorIndicator <- rep(0,nObs)
-	censorIndicator[y<lowerCensorLimit] <- -1
-	censorIndicator[y>upperCensorLimit] <- 1
-
-	if(options()$verbose) message(paste0("simulated series: censor rate: ", sum(abs(censorIndicator))/nObs))
-	ret <- list(y = y,
-		    x = externalVariable,
-		    censorIndicator=censorIndicator,
-		    lowerCensorLimit=lowerCensorLimit,
-		    upperCensorLimit=upperCensorLimit
-		    )
-	ret
 }
 
 

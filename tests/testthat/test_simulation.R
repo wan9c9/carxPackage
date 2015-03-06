@@ -2,16 +2,24 @@
 
 #! test double censoring
 message("test double censoring")
-rslt <- simulation.carx(nRep=1,fullEstimation=F)
-summary(rslt)
-print(rslt)
+rslt <- simulation.carx(nRep=1,nObs=1000,fullEstimation=F)
+#summary(rslt)
+#print(rslt)
 obj <- rslt$object
+print(obj)
 f <- fitted(obj)
 r <- residuals(obj)
-print(obj)
-resid(obj)
-
 fr <- f + r*obj$sigma
+
+plot(obj)
+lines(fr,col="red") #impose fitted + residuals
+points(fr,col="red",pch='*') #impose fitted + residuals
+lines(obj$y,col="green",pch=20) #impose original series
+points(obj$y,col="green",pch=20) #impose original series
+
+ts.plot(obj$y - fr)
+acf(r[-(1:obj$nAR)])
+
 #find uncensored index
 idx <- NULL
 for(i in (obj$nAR+1):obj$nObs)
@@ -22,9 +30,6 @@ for(i in (obj$nAR+1):obj$nObs)
 plot(obj$y[idx], fr[idx], main="The plot should be a straight line")
 
 plot(obj)
-lines(fr,col="red") #impose fitted + residuals
-lines(obj$y,col="green") #impose original series
-
 #test predict.carx
 n.ahead <- 10
 newdata <- matrix(rnorm(n.ahead*rslt$object$nX),nrow=n.ahead,ncol=rslt$object$nX)

@@ -41,6 +41,8 @@ plot.carx <- function(object,transformFun=NULL,xAxisVar=NULL,xlab="Index",ylab="
 
 		lines(as.zoo(as.ts(zoo(object$lowerCensorLimit, xAxisVar))),lty=3,col="red")
 		lines(as.zoo(as.ts(zoo(object$upperCensorLimit, xAxisVar))),lty=5,col="red")
+		points(xAxisVar[object$censorIndicator<0],object$lowerCensorLimit[object$censorIndicator<0],pch=2)
+		points(xAxisVar[object$censorIndicator>0],object$upperCensorLimit[object$censorIndicator>0],pch=6)
 	}else{
 		ylim <- transformFun(ylim)
 		plot(as.zoo(as.ts(zoo(transformFun(y), xAxisVar))), type="n",xaxt="n",yaxt="n")
@@ -50,6 +52,8 @@ plot.carx <- function(object,transformFun=NULL,xAxisVar=NULL,xlab="Index",ylab="
 		lines(as.zoo(as.ts(zoo(transformFun(yh), xAxisVar))), lty=2,col='blue')
 		lines(as.zoo(as.ts(zoo(transformFun(object$lowerCensorLimit), xAxisVar))),lty=3,col="red")
 		lines(as.zoo(as.ts(zoo(transformFun(object$upperCensorLimit), xAxisVar))),lty=5,col="red")
+		points(xAxisVar[object$censorIndicator<0],transformFun(object$lowerCensorLimit[object$censorIndicator<0]),pch=2)
+		points(xAxisVar[object$censorIndicator>0],transformFun(object$upperCensorLimit[object$censorIndicator>0]),pch=6)
 	}
 	legend("topright",legend=c(ylab,'Fitted value','Lower censor limit','Upper censor limit'),lty=c(1,2,3,5),col=c('black','blue','red','red'))
 	if(!is.null(outliers)) abline(v=xAxisVar[outliers],col="red",lty=2)

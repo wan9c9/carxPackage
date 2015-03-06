@@ -9,9 +9,9 @@ fitted.carx <- function(object,...)
 	trend <- object$x%*%object$prmtrX
 	eta <- object$y - trend
 
-	for(idx in (nAR+1):nObs)
+	for(idx in (1:nObs)[-object$skipIndex])
 	{
-		#message(sprintf("calculating %i",idx))
+		message(sprintf("calculating %i",idx))
 		if(all(object$censorIndicator[(idx-1):(idx-nAR)]==0))
 		{
 			ret[idx] <- trend[idx] + eta[(idx-1):(idx-nAR)]%*%object$prmtrAR
@@ -31,7 +31,7 @@ fitted.carx <- function(object,...)
 			} 
 
 			nStart <- idx - iStart
-			#message(sprintf("idx: %i, iStart: %i, nStart: %i",idx,iStart,nStart))
+			message(sprintf("idx: %i, iStart: %i, nStart: %i",idx,iStart,nStart))
 			tmpCensorIndicator <- object$censorIndicator[(idx-1):iStart] #looking back
 			nCensored <- sum(tmpCensorIndicator!=0)
 			covEta <- computeCovAR(object$prmtrAR, object$sigma, nStart+1)

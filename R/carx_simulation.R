@@ -6,7 +6,7 @@
 #' @param trueAR the true AR parameter.
 #' @param lcl the lower censor limit.
 #' @param ucl the upper censor limit.
-#' @param sampleSize the sample size.
+#' @param nObs the sample size.
 #' @param nRep the number of replications in the simulation study.
 #' @param fullEstimation a bool value indicating if confidence interval by bootstrap 
 #'        is performed.
@@ -26,13 +26,13 @@
 #' simulation.carx(lcl=-Inf) # no left censoring
 
 simulation.carx <-function(trueEV=c(0.2,0.4), 
-			   trueAR=c(0.1,0.3,-0.2), 
-			   trueSigma=sqrt(0.5),
-			   lcl=-1,
-			   ucl=1,
-			   sampleSize=100,
+			   trueAR=c(-0.5,0.3,-0.1), 
+			   trueSigma=0.2,
+			   lcl=-0.5,
+			   ucl=0.5,
+			   nObs=100,
 			   nRep=1000,
-               alpha=0.95,
+         alpha=0.95,
 			   fullEstimation=T)
 {
 	message(c("Simulation study begins at ",date()))
@@ -46,8 +46,8 @@ simulation.carx <-function(trueEV=c(0.2,0.4),
 			eval(parse(text = args[i]))
 		}
 	}
-	lowercl <- rep(lcl, sampleSize)
-	uppercl <- rep(ucl, sampleSize)
+	lowercl <- rep(lcl, nObs)
+	uppercl <- rep(ucl, nObs)
 
 
 	nAR <- length(trueAR)
@@ -64,7 +64,7 @@ simulation.carx <-function(trueEV=c(0.2,0.4),
 	simEst <-function(iRep)
 	{
 		message(sprintf("Rep:%i",iRep))
-		dat <- carx.simulate(sampleSize, trueAR, trueEV, trueSigma, lowercl, uppercl, seed=37513*iRep)
+		dat <- carx.simulate(nObs, trueAR, trueEV, trueSigma, lowercl, uppercl, seed=37513*iRep)
 		rslt <- carx.default(dat$y,dat$x,dat$censorIndicator,dat$lowerCensorLimit,dat$upperCensorLimit, nAR, getCI=fullEstimation,skipIndex=seq(1,nAR))
 		ret <- c(iRep,rslt$censorRate,rslt$prmtrInit,rslt$prmtrEstd)
 		if(fullEstimation)

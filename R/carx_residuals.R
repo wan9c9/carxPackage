@@ -1,9 +1,9 @@
 #' get the residuals of a fitted \code{carx} object
 residuals.carx <- function(object,...)
 {
-	message("Calling residuals.carx")
-	nObs  <- object$nObs
-	nAR  <- object$nAR
+	#message("Calling residuals.carx")
+	nObs <- object$nObs
+	nAR <- object$nAR
 
 	rsdl <- rep(NA,nObs)
 	trend <- object$x%*%object$prmtrX
