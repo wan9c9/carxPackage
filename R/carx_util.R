@@ -36,7 +36,12 @@ conditionalDistMvnorm <- function(y, conditionalIndex, meanVec, varMat)
 #' @return the covariance matrix needed
 computeCovAR <- function(arPrmtr, sigmaEps, lag=length(arPrmtr)+1)
 {
+	roots <- polyroot(c(1,-arPrmtr))
+	#print(roots)
+	if(any(abs(roots)<0.999))
+		message(c("warning: arPrmtr is not stationary",paste(arPrmtr,sep=',')))
 	val <- ARMAacf(ar=arPrmtr, lag.max=lag)
+	#print(val)
 	val <- as.vector(val)
 
 	mat <- matrix(nrow=lag,ncol=lag)
@@ -51,6 +56,7 @@ computeCovAR <- function(arPrmtr, sigmaEps, lag=length(arPrmtr)+1)
 			}
 		}
 	}
+
 	v <- sigmaEps^2/(1-arPrmtr%*%val[2:(length(arPrmtr)+1)])
 	mat <- v[1,1]*mat
 	return(mat)

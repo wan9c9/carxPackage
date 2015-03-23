@@ -26,14 +26,15 @@
 #' simulation.carx(lcl=-Inf) # no left censoring
 
 simulation.carx <-function(trueEV=c(0.2,0.4), 
-			   trueAR=c(-0.5,0.3,-0.1), 
-			   trueSigma=0.2,
-			   lcl=-0.5,
-			   ucl=0.5,
-			   nObs=100,
-			   nRep=1000,
-         alpha=0.95,
-			   fullEstimation=T)
+													 trueAR=c(-0.5,0.3,-0.1), 
+													 trueSigma=0.2,
+													 lcl=-1,
+													 ucl=1,
+													 nObs=100,
+													 nRep=2,
+													 alpha=0.95,
+													 nLag = 10,
+													 fullEstimation=F)
 {
 	message(c("Simulation study begins at ",date()))
 	t0 <- proc.time()
@@ -58,7 +59,7 @@ simulation.carx <-function(trueEV=c(0.2,0.4),
 	prmtrInit <- matrix(0,nRep,nPrmtr)
 	estCI <- matrix(0,nRep,2*nPrmtr)
 	coverage <- numeric(nPrmtr)
-        
+
 	#' return numberOfReplication, censorRate, prmrtrInit, prmtrEstd 
 	#' ( lower_ci, upper_ci, coverageIndicator)
 	simEst <-function(iRep)
@@ -75,40 +76,44 @@ simulation.carx <-function(trueEV=c(0.2,0.4),
 			coverage <- (truePrmtr >= ci[,1])*(truePrmtr <= ci[,2])
 			ret <- c(ret,coverage)
 		}
+		#print("HH")
+		rsdl <- residuals(rslt)
+		#print(rsdl)
+		rtest <- lbStat(rsdl,nLag)
+		#print(rtest)
+		ret <- c(ret,rtest)
+		#print(ret)
 		list(object=rslt,summary=ret)
 	}
 
-    if(nRep == 1)
-    {
-	    rslt <- simEst(nRep)
-	    message(sprintf("Time used:"))
-	    print(proc.time()-t0)
-	    message(c("Simulation study ends at ",date())) 
-	    return(rslt)
-    }
+	if(nRep == 1)
+	{
+		rslt <- simEst(nRep)
+		message(sprintf("Time used:"))
+		print(proc.time()-t0)
+		message(c("Simulation study ends at ",date())) 
+		return(rslt)
+	}
 
 	iter <- 1:nRep
 	rslt <- mclapply(iter,simEst,mc.cores=detectCores())
-    
-    objects <- NULL
-    if(fullEstimation) 
-        summaryList <- matrix(nrow=nRep,ncol=(2+5*nPrmtr))
-    else
-        summaryList <- matrix(nrow=nRep,ncol=(2+2*nPrmtr))
 
-    i <- 1
-    for(r in rslt) 
-    {
-        objects <-c(objects,r$object)
-        summaryList[i,] <- r$summary
-        #summaryList[i,] <- c(summaryList,r$summary)
-        i <- i+1
-    }
-    print(summaryList)
+	if(fullEstimation) 
+		summaryList <- matrix(nrow=nRep,ncol=(3+5*nPrmtr))
+	else
+		summaryList <- matrix(nrow=nRep,ncol=(3+2*nPrmtr))
+	i <- 1
+	objects <- NULL
+	for(r in rslt) 
+	{
+		objects <-c(objects,r$object)
+		#print(r$summary)
+		summaryList[i,] <- r$summary
+		i <- i+1
+	}
+	#print(summaryList)
 
-	#rslt <- do.call(rbind,summaryList)
-    rslt <- summaryList
-	#print(rslt)
+	rslt <- summaryList
 	colm <- colMeans(rslt)
 	avgCR <- colm[2]
 	avgEstd <- colm[(2+nPrmtr+1):(2+2*nPrmtr)]
@@ -120,35 +125,40 @@ simulation.carx <-function(trueEV=c(0.2,0.4),
 	else
 		coverageRate <- rep(NaN, nPrmtr)
 
-	summary <- cbind(truePrmtr,avgEstd,std,coverageRate)
-    colnames(summary) <- c('true', 'avg.estd','std.err','coverage.rate')
-    xnames <- paste0('X',1:length(trueEV))
-	rnames <- c(xnames,paste0('AR',1:nAR),"sigma")
-    rownames(summary) <- rnames
+	rejectionRate <- sum(rslt[,dim(rslt)[2]] > qchisq(alpha, nLag-nAR))/nRep
 
-    rslt <- list(nRep=nRep,
-                objects = objects,
-                averageCensorRate=avgCR,
-                alpha = alpha,
-                summary = summary)
-                    
+	summary <- cbind(truePrmtr,avgEstd,std,coverageRate)
+	colnames(summary) <- c('true', 'avg.estd','std.err','coverage.rate')
+	xnames <- paste0('X',1:length(trueEV))
+	rnames <- c(xnames,paste0('AR',1:nAR),"sigma")
+	rownames(summary) <- rnames
+
+	rslt <- list(nRep=nRep,
+							 objects = objects,
+							 averageCensorRate=avgCR,
+							 alpha = alpha,
+							 allResult = summaryList,
+							 summary = summary)
+
 	message(sprintf("\nReplication: %i\n", nRep))
 	message(sprintf("\nAverage censor rate: %f\n", avgCR))
+	message(sprintf("\n rejection rate: %f\n", rejectionRate))
+
 	message("                     Simulation Summary        ")
 	message("     true          meanEstd       stdError     coverageRate ")
 	for(i in 1:nPrmtr)
 	{
 		m <- c(sprintf("%10.3f ",truePrmtr[i]),
-		       sprintf("\t%10.3f ",avgEstd[i]),
-		       sprintf("\t%10.3f ",std[i]), 
-		       sprintf("\t%10.3f ",coverageRate[i])
-		       )
+					 sprintf("\t%10.3f ",avgEstd[i]),
+					 sprintf("\t%10.3f ",std[i]), 
+					 sprintf("\t%10.3f ",coverageRate[i])
+					 )
 		message(m)
 	}
 	message(sprintf("Time used:"))
 	print(proc.time()-t0)
 	message(c("Simulation study ends at ",date()))
-	    
+
 	return(rslt)
 }
 

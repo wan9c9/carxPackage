@@ -1,0 +1,60 @@
+ simulation study of power
+> power
+[1] 0.052 0.253 0.252 0.270 0.252
+> delta
+[1] 0.0 0.1 0.2 0.3 0.4
+
+Simulation study ends at Tue Mar 17 10:25:24 2015
+> plot(delta,power)
+> delta
+[1]  0.0 -0.1 -0.2 -0.3 -0.4
+> power
+[1] 0.052 0.226 0.182 0.162 0.106
+
+Simulation study ends at Sat Mar 21 12:39:46 2015
+> power
+[1] 0.106 0.162 0.182 0.226 0.052 0.253 0.252 0.270 0.252
+> power0
+[1] 0.996 0.912 0.635 0.370 0.238 0.237 0.288 0.365 0.430
+
+
+#new simulation study
+> print(delta)
+[1] 0.0 0.1 0.2 0.3 0.4
+> print(avgCR) #censoring rate
+[1] 0.21253 0.19874 0.19458 0.19506 0.19970
+> print(power0) #rejection rate without censoring
+[1] 0.042 0.308 0.308 0.309 0.329
+> print(power) #rejection rate with censoring
+[1] 0.052 0.253 0.252 0.270 0.252
+
+print(delta)
+[1] 0.5 0.6 0.7
+> print(avgCR)
+[1] 0.20893 0.22503 0.24952
+> print(power0)
+[1] 0.325 0.328 0.328
+> print(power)
+[1] 0.266 0.268 0.271
+
+
+> print(delta)
+[1] 0.8 0.9
+> print(avgCR)
+[1] 0.28924 0.35694
+> print(power0)
+[1] 0.333 0.355
+> print(power)
+[1] 0.247 0.245
+
+
+Sadly, the above result is not correct, I got something wrong with the disturbance.
+
+I've corrected that bug, now I am running the program again.
+
+delta = 0.1
+Average censor rate: 0.202200
+ rejection rate0: 0.044000
+ rejection rate: 0.047000
+
+

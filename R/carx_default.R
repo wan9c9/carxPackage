@@ -58,6 +58,10 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	#standardize censoreIndicator
 	censorIndicator[ censorIndicator>0 ] <- 1
 	censorIndicator[ censorIndicator<0 ] <- -1
+	if( all(censorIndicator == 0) )
+		noCensor = TRUE
+	else
+		noCensor = FALSE
 
 	if(is.null(lowerCensorLimit)) # no lower censoring
 	{
@@ -136,8 +140,8 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		skipIndex <- seq(1,nAR)
 		if(verbose)
 		{
-			message("skip index is constructed as ")
-			message(paste(skipIndex))
+			message("Skip index is constructed as ")
+			message(paste(skipIndex,sep=','))
 		}
 	}
 	nSkip <- length(skipIndex)
@@ -264,6 +268,12 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 				tmpLower[censored>0] <- upperCensorLimit[idx:(idx-nAR)][tmpCensorIndicator>0]
 				# upper limit is lower censor limit
 				tmpUpper[censored<0] <- lowerCensorLimit[idx:(idx-nAR)][tmpCensorIndicator<0]
+				if(abs(det(tmpVar)) < 0.001)
+				{
+					 message("var is nearly singluar")
+					print(covEta)
+					print(tmpVar)
+				}
 				ret <- mtmvnorm(tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
 				wkMean[idx,tmpCensorIndicator!=0] <<- ret$'tmean'
 				wkCov[idx,tmpCensorIndicator!=0,tmpCensorIndicator!=0] <<- ret$'tvar'
@@ -275,12 +285,15 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	eStepNaive <- function()
 	{
 		if(verbose) message("entering eStepNaive")
-		for(idx in seq(1,nObs)[-skipIndex])
+		if(!noCensor)
 		{
-			tmpCensorIndicator <- censorIndicator[idx:(idx-nAR)]
-			wkMean[idx,tmpCensorIndicator>0] <<- upperCensorLimit[idx:(idx-nAR)][tmpCensorIndicator>0]
-			wkMean[idx,tmpCensorIndicator<0] <<- lowerCensorLimit[idx:(idx-nAR)][tmpCensorIndicator<0]
-			wkCov[idx,,] <<- 0
+			for(idx in seq(1,nObs)[-skipIndex])
+			{
+				tmpCensorIndicator <- censorIndicator[idx:(idx-nAR)]
+				wkMean[idx,tmpCensorIndicator>0] <<- upperCensorLimit[idx:(idx-nAR)][tmpCensorIndicator>0]
+				wkMean[idx,tmpCensorIndicator<0] <<- lowerCensorLimit[idx:(idx-nAR)][tmpCensorIndicator<0]
+				wkCov[idx,,] <<- 0
+			}
 		}
 		if(verbose) message("E-step Naive done.")
 	}
@@ -296,7 +309,21 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 			vec <- vec + wkMean2[idx,1]*wkMean2[idx,-1] + wkCov[idx,-1,1]
 			mat <- mat + outer(wkMean2[idx,-1],wkMean2[idx,-1]) + wkCov[idx,-1,-1]
 		}
-		return( solve(mat,vec) )
+
+		tmp <- solve(mat,vec)
+		if(any(abs(polyroot(c(1,-tmp)))<=1.0)) #tmp is not feasible
+		{
+			message("arPrmtr is not directly solvable")
+			grad <- mat%*%prmtrAR - vec
+			tmp <- prmtrAR - grad
+			i <- 1 
+			while(any(abs(polyroot(c(1,-tmp)))<=1.0) && i <= 10)
+			{
+				tmp <- prmtrAR - grad/2^i
+			}
+			message(i)
+		}
+		return(tmp)
 	}
 
 	updatePrmtrEV <- function()
@@ -445,10 +472,11 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	# begin execution
 	resetWK()
 	#message("initializing parameters")
-	if(needInit) 
+	if(needInit || noCensor )  # If no censoring, it is estimating an AR-X
 		initPrmtr(tol, max.iter)
 	prmtrInit <- getPrmtr()
-	estimatePrmtr(tol,max.iter)
+	if(!noCensor)
+		estimatePrmtr(tol,max.iter)
 	setEstdPrmtr()
 
 	coeff <- c(prmtrXEstd,prmtrAREstd)
