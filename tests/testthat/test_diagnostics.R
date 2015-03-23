@@ -1,6 +1,7 @@
 .First()
+library(devtools)
 load_all()
-options(verbose=TRUE)
+options(verbose=F)
 message("testing diagnostics")
 
 simulation2.carx <-function(trueEV=c(0.2,0.4), 
@@ -99,7 +100,7 @@ simulation2.carx <-function(trueEV=c(0.2,0.4),
 	#print(rslt)
 
 
-	summaryList <- matrix(nrow=nRep,ncol=(length(nObs)*length(lowercl)*length(nLag)*2))
+	summaryList <- matrix(nrow=nRep,ncol=2+(length(nObs)*length(lowercl)*length(nLag)*2))
 	i <- 1
 	for(r in rslt) 
 	{
@@ -117,34 +118,20 @@ simulation2.carx <-function(trueEV=c(0.2,0.4),
 
 
 #debug(simulation2.carx)
-#rslt <- simulation2.carx(testPower = 0.0,nRep=1000)
 
-delta <- seq(0.0,0.8,0.1)
-powermat <- matrix(nrow=length(delta),ncol = 1+16)
-powermat[,1] <- delta
-for(i in 1:length(delta) )
+rslt <- simulation2.carx(testPower = 0.0,nRep=1000)
+write.table(rslt,file="testRslt",row.names=F,col.names=F)
+
+batch <- FALSE
+if(batch)
 {
-	rslt <- simulation2.carx(testPower = delta[i],nRep=1000)
-	powermat[i,-1] <- rslt
+    delta <- seq(0.0,0.8,0.1)
+    powermat <- matrix(nrow=length(delta),ncol = 1+2+16)
+    powermat[,1] <- delta
+    for(i in 1:length(delta) )
+    {
+        rslt <- simulation2.carx(testPower = delta[i],nRep=1000)
+        powermat[i,-1] <- rslt
+    }
+    write.table(powermat,file="powerMat",row.names=F,col.names=F)
 }
-
-##########################################
-
-	
-power0 <- numeric(length(delta))
-avgCR <- numeric(length(delta))
-power <- numeric(length(delta))
-#allRslt <- NULL
-for(i in 1:length(delta) )
-{
-	rslt <- simulation2.carx(testPower = delta[i],nRep=1000)
-	#allRslt <- c(allRslt, rslt)
-	avgCR[i] <- rslt$averageCensorRate
-	power0[i] <- rslt$rejectionRate0
-	power[i] <- rslt$rejectionRate
-}
-print(delta)
-print(avgCR)
-print(power0)
-print(power)
-
