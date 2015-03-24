@@ -38,8 +38,11 @@ computeCovAR <- function(arPrmtr, sigmaEps, lag=length(arPrmtr)+1)
 {
 	roots <- polyroot(c(1,-arPrmtr))
 	#print(roots)
-	if(any(abs(roots)<0.999))
-		message(c("warning: arPrmtr is not stationary",paste(arPrmtr,sep=',')))
+	if(any(abs(roots)<=1))
+	{
+		message(c("warning: arPrmtr is not stationary",paste(arPrmtr,sep=',')," Roots:"))
+	  print(roots)
+	}
 	val <- ARMAacf(ar=arPrmtr, lag.max=lag)
 	#print(val)
 	val <- as.vector(val)
