@@ -313,15 +313,15 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		tmp <- solve(mat,vec)
 		if(any(abs(polyroot(c(1,-tmp)))<=1.0)) #tmp is not feasible
 		{
-			message("arPrmtr is not directly solvable")
 			grad <- mat%*%prmtrAR - vec
 			tmp <- prmtrAR - grad
 			i <- 1 
 			while(any(abs(polyroot(c(1,-tmp)))<=1.0) && i <= 10)
 			{
 				tmp <- prmtrAR - grad/2^i
+				i <- i+1
 			}
-			message(i)
+			tmp <- as.vector(tmp)
 		}
 		return(tmp)
 	}
