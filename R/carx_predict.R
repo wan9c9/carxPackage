@@ -1,19 +1,19 @@
-require(debug)
-
 #' Provide predictions with fitted \code{carx} object
+#'
 #' \code{predict.carx} provides an method to predict the future values of an fitted
 #' \code{carx} object with given new observations in \code{x}.
 #' @param object A fitted \code{carx} object.
-#' @param newdata The new observations for the coverates \code{x}. 
+#' @param newdata The new observations for the coverates \code{x}.
 #' If there is no covariates, the value can be assigned to be \code{NULL}.
 #' Otherwise, an matrix of new observations is required for give predictions.
-#' @param n.ahead The number of steps ahead the user wants to predict, default=1.
-#' @param level The level used to construct the Confidence interval, default=0.95.
-#' @param nRep The number of replications to be performed when there is censoring in the last \code{nAR} 
-#' observations, default=1000.
+#' @param n.ahead The number of steps ahead the user wants to predict, default = 1.
+#' @param level The level used to construct the Confidence interval, default = 0.95.
+#' @param nRep The number of replications to be performed when censoring exists in the last \code{nAR}
+#' observations, default = 1000.
+#' @param ... not used.
 #' @return A list consisting of \code{fit}, \code{se.fit}, and \code{ci} representing the predictions,
 #' standard errors of predictions, and confidence intervals respectively.
-
+#' @export
 predict.carx <- function(object,newdata=NULL,n.ahead=1,level=0.95,nRep=1000,...)
 {
   #tt <- terms(object)
@@ -31,7 +31,7 @@ predict.carx <- function(object,newdata=NULL,n.ahead=1,level=0.95,nRep=1000,...)
   if( is.null(newdata) && !object$xIsOne )
     stop("ERROR: newdata supplied is NULL, but the x data in model is not ones.")
 
-  if( n.ahead < 1) 
+  if( n.ahead < 1)
 	  stop("ERROR: n.ahead must be greater than or equal to 1.")
 
   nAR <- object$nAR
@@ -65,7 +65,7 @@ predict.carx <- function(object,newdata=NULL,n.ahead=1,level=0.95,nRep=1000,...)
   yPred <- c(object$y[iStart:nObs], rep(0,n.ahead))
 	if(nStart == nAR)
 	{
-		#no censoring in latest nAR observations 
+		#no censoring in latest nAR observations
 	  message("no censoring in latest nAR obs")
 		coefs <- matrix(rep(n.ahead*n.ahead),nrow=n.ahead,ncol=n.ahead)
 		predSE <- rep(0,n.ahead)
@@ -91,7 +91,7 @@ predict.carx <- function(object,newdata=NULL,n.ahead=1,level=0.95,nRep=1000,...)
 			## prediction error?
 		}
 	else
-	{ 
+	{
 		message("censoring occurs in latest nAR obs")
 		tmpCensorIndicator <- object$censorIndicator[nObs:iStart] #reverse order
 		nCensored <- sum(tmpCensorIndicator!=0)
@@ -115,7 +115,7 @@ predict.carx <- function(object,newdata=NULL,n.ahead=1,level=0.95,nRep=1000,...)
     tmpLower[censored>0] <- object$upperCensorLimit[nObs:iStart][tmpCensorIndicator>0]
     tmpUpper[censored<0] <- object$lowerCensorLimit[nObs:iStart][tmpCensorIndicator<0]
 
-    yCensored <- rtmvnorm(nRep,tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
+    yCensored <- tmvtnorm::rtmvnorm(nRep,tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
     eps <- matrix(rnorm(nRep*n.ahead,0,object$sigma),nrow=nRep,ncol=n.ahead)
     etaFuture <- matrix(nrow=nRep,ncol=nStart+n.ahead)
 
@@ -133,10 +133,11 @@ predict.carx <- function(object,newdata=NULL,n.ahead=1,level=0.95,nRep=1000,...)
 	    qntl[i,] <- quantile(etaFuture[,nStart+i],probs=probs)
     qntl[,1] <- qntl[,1] + center
     qntl[,2] <- qntl[,2] + center
-    yPred <-  center + colMeans(etaFuture[,-(1:nStart)])
-    predSE <- colSds(etaFuture[,-(1:nStart)])
+    yPred <-  colMeans(etaFuture[,-(1:nStart)])
+    yPred <-  yPred + center
+    predSE <- matrixStats::colSds(etaFuture[,-(1:nStart)])
   }
   list("fit"=as.vector(yPred),"se.fit"=predSE,"ci"=qntl)
 }
 
-debug(predict.carx)
+#debug(predict.carx)

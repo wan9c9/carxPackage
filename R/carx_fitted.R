@@ -1,7 +1,12 @@
-#' get the fitted values of a \code{carx} object
+#' The fitted values from a \code{carx} object
+#'
+#' Compute the fitted values from a \code{carx} object.
+#' @param object a fitted \code{carx} object.
+#' @param ... not used.
+#' @export
 fitted.carx <- function(object,...)
 {
-	message("Calling fitted.carx")
+	#message("Calling fitted.carx")
 	nObs  <- object$nObs
 	nAR  <- object$nAR
 
@@ -11,7 +16,7 @@ fitted.carx <- function(object,...)
 
 	for(idx in (1:nObs)[-object$skipIndex])
 	{
-		message(sprintf("calculating %i",idx))
+		#message(sprintf("calculating %i",idx))
 		if(all(object$censorIndicator[(idx-1):(idx-nAR)]==0))
 		{
 			ret[idx] <- trend[idx] + eta[(idx-1):(idx-nAR)]%*%object$prmtrAR
@@ -28,10 +33,10 @@ fitted.carx <- function(object,...)
 					iStart <- i
 					break
 				}
-			} 
+			}
 
 			nStart <- idx - iStart
-			message(sprintf("idx: %i, iStart: %i, nStart: %i",idx,iStart,nStart))
+			#message(sprintf("idx: %i, iStart: %i, nStart: %i",idx,iStart,nStart))
 			tmpCensorIndicator <- object$censorIndicator[(idx-1):iStart] #looking back
 			nCensored <- sum(tmpCensorIndicator!=0)
 			covEta <- computeCovAR(object$prmtrAR, object$sigma, nStart+1)
@@ -42,7 +47,7 @@ fitted.carx <- function(object,...)
 				cdist <- conditionalDistMvnorm(tmpY, conditionalIndex, trend[idx:iStart], covEta)
 				tmpMean <- cdist$'mean'
 				tmpVar <- cdist$'var'
-			}else 
+			}else
 			{
 				tmpMean <- trend[idx:iStart]
 				tmpVar <- covEta
@@ -53,7 +58,7 @@ fitted.carx <- function(object,...)
 			censored <- tmpCensorIndicator[tmpCensorIndicator!=0]
 			tmpLower[-1][censored>0] <- object$upperCensorLimit[(idx-1):iStart][tmpCensorIndicator>0]
 			tmpUpper[-1][censored<0] <- object$lowerCensorLimit[(idx-1):iStart][tmpCensorIndicator<0]
-			mn <- mtmvnorm(mean=tmpMean, sigma=tmpVar,lower=tmpLower,upper=tmpUpper,doComputeVariance=FALSE)
+			mn <- tmvtnorm::mtmvnorm(mean=tmpMean, sigma=tmpVar,lower=tmpLower,upper=tmpUpper,doComputeVariance=FALSE)
 			ret[idx] <- mn$tmean[1]
 		}
 	}

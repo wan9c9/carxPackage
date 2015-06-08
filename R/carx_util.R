@@ -5,12 +5,11 @@
 #' This function calculates the conditional mean & variance of a multivariate normal distribution.
 #' with (meanVec, varMat), conditional on y at indices conditionalIndex.
 #'
-#' @param y a vector to be conditioned on
-#' @param conditionalIndex the index to be conditioned on
-#' @param meanVec the mean vector the joint multivariate normal distribution
-#' @param varMat the variance-covariance matrix of the joint multivariate normal distribution
+#' @param y a vector to be conditioned on.
+#' @param conditionalIndex the index to be conditioned on.
+#' @param meanVec the mean vector the joint multivariate normal distribution.
+#' @param varMat the variance-covariance matrix of the joint multivariate normal distribution.
 #' @return a list consisting of 'mean' and 'var' representing the conditional mean and variance respectively.
-#' @keywords conditional distribution multivariate normal
 #' @export
 #' @examples
 #' conditionalDistMvnorm(c(-0.5,0.5), c(2,4), c(1,2,3,4),matrix(
@@ -30,10 +29,13 @@ conditionalDistMvnorm <- function(y, conditionalIndex, meanVec, varMat)
 	return (list('mean'=mNew,'var' = vNew))
 }
 
-#' compute the covariance matrix of \deqn{(\eta_t,\cdots,\eta_{t-p})} of the AR model
-#' @param arPrmtr the parameter of the AR model
-#' @param sigmaEps the standard deviation of the residuals of the AR model
-#' @return the covariance matrix needed
+#' compute the covariance matrix of some observations of the AR model
+#'
+#' compute the covariance matrix of \deqn{(\eta_t,\cdots,\eta_{t-lag})} of the AR model
+#' @param arPrmtr the parameter of the AR model.
+#' @param sigmaEps the standard deviation of the residuals of the AR model.
+#' @param lag number of lags to be computed, including lag at zero.
+#' @return the covariance matrix needed.
 computeCovAR <- function(arPrmtr, sigmaEps, lag=length(arPrmtr)+1)
 {
 	roots <- polyroot(c(1,-arPrmtr))

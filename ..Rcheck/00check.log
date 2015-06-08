@@ -1,0 +1,8 @@
+* using log directory ‘/home/chao/workspace/carxPackage/..Rcheck’
+* using R version 3.2.0 (2015-04-16)
+* using platform: x86_64-redhat-linux-gnu (64-bit)
+* using session charset: UTF-8
+* checking for file ‘./DESCRIPTION’ ... ERROR
+Required fields missing or empty:
+  ‘Author’ ‘Maintainer’
+Status: 1 ERROR

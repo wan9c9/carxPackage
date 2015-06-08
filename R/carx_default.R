@@ -1,60 +1,75 @@
-#' \code{carx}: A package for estimating the parameters of Censored Auto-Regressive model with eXogenous covariates (CARX).
+#' \code{carx}: A package to fit Censored Auto-Regressive model with eXogenous covariates (CARX).
 #'
-#' \code{carx}: A package for estimating the parameters of Censored Auto-Regressive model with eXogenous covariates (CARX),
-#' , or it can be thought as regression models with possibly censored responses and autoregressive residuals
-#' \code{carx} allows left-censoring, right-censoring or double-censoring of the response variable \code{y},
-#' where whether the corresponding \code{y_t} is censored or not is recorded in the variable \code{censorIndicator},
-#' which takes value -1, 0, and 1 if it is left-censored, not censored, and right-censored, respectively.
-#' The censoring limit is recorded in the variable \code{censorLimit}.
+#' \code{carx}: A package to fit Censored AutoRegressive model with eXogenous
+#' covariates (CARX), which can also be viewed as regression models with possibly
+#' censored responses
+#' and autoregressive residuals. \code{carx} allows left, right, or interval
+#' censoring for the response variable. The regression errors are assumed to
+#' follow an autoregressive model with normal innovations. This package also
+#' contains functions to predict the future values, diagnose whether the model is
+#' adequate, and plot functions to illustrate the data and model.
 #'
 #' @docType package
 #' @name carx
 NULL
 
-require(parallel)
-require(stats)
-require(tmvtnorm)
-require(ggplot2)
-#library(debug)
-#library(R2HTML)
-library(zoo)
-#library(matrixStats)
-
-
-
-carx <- function(x,...) UseMethod("carx")
+#' @export
+carx <- function(y,...) UseMethod("carx")
 
 #' \code{carx.default} is the default method for CARX.
-
-#' \code{carx.default} uses given data and other settings to compute the estimated parameters of CARX,
-#' and optionally compute the standard error or confidence intervals of parameter estimates
-#' by parametric bootstrap.
-
-#' @param y a vector of regressors
-#' @param x a matrix of covariates, or some object which can be coerced to matrix
+#'
+#' \code{carx.default} uses given data and other settings to estimate the parameters of CARX, and optionally compute the standard error or confidence intervals of parameter estimates by parametric bootstrap.
+#' @param y a vector of possibly censored responses, only uncensored observation
+#' marked by zeros of \code{censorIndicator} are used.
+#' @param x a matrix of covariates, or some object which can be coerced to matrix.
 #' @param censorIndicator a vector of -1,0,1's indicating that the corresponding y is
-#' left-censored, not censored, or right-censored.
-#' @param censorLimit a vector of censor limits for each y
-#' @param lowerCensorLimit a vector of lower censor limits for each y or a number assuming uniform limit
-#' @param upperCensorLimit a vector of upper censor limits for each y or a number assuming uniform limit
-#' @param nAR the order of AR model for the regression errors
-#' @param tol the tolerance in estimating the parameters, default = 1.0e-4
-#' @param max.iter maximum number of iterations allowed when estimating parameters, default = 500
-#' @param getCI bool value to indicate if the confidence interval for the parameter is needed.
-#' @param alpha numeric value (0,1) to get the confidence interval for the parameter
-#' @param nBootstrapSample number of bootstrap samples when estimating confidence interval for the parameter, default = 1000
-#' @param skipIndex a vector of indices indicating indices to be skipped, as calculating the conditional log-likelihood need some initial values to start, also is the initial values to calculate the conditional log-likelihood, useful if there are multiple segment of series in the whole series.
-#' @return a CARX object of the estimated model
+#' left-censored, not censored, and right-censored resectively.
+#' @param lowerCensorLimit a vector of lower censor limits or a number assuming constant limit.
+#' @param upperCensorLimit a vector of upper censor limits or a number assuming constant limit.
+#' @param nAR the order of AR model for the regression errors.
+#' @param prmtrX the initial value for the parameter of \code{x}, default = \code{NULL}.
+#' @param prmtrAR the initial value for the AR coefficients, default = \code{NULL}.
+#' @param sigmaEps the initial value for the standard deviation of the errors of the AR process, default = \code{NULL}.
+#' @param tol the tolerance in estimating the parameters, default = 1.0e-4.
+#' @param max.iter maximum number of iterations allowed when estimating parameters, default = 500.
+#' @param getCI bool value to indicate if the confidence interval for the
+#' parameter is to be constructed, default = \code{TRUE}.
+#' @param alpha numeric value in (0,1) to get the \code{alpha} confidence interval for the parameter, default = 0.95.
+#' @param nBootstrapSample number of bootstrap samples when estimating confidence interval for the parameter, default = 1000.
+#' @param skipIndex a vector of indices indicating indices to be skipped, as some initial values are needed to calculate the conditional log-likelihood, also is the initial values to calculate the conditional log-likelihood, useful if there are multiple segment of series in the whole series.
+#' @param verbose bool value indicates whether to print intermediate information, default = FALSE.
+#' @param ... not used.
+#' @return a CARX object of the estimated model.
+#' @export
+#' @examples
+#' trueX = c(0.2,0.4)
+#' nAR = 2
+#' trueAR = c(-0.28,0.25)
+#' trueSigma = 0.60
+#' lcl = -1
+#' ucl = 1
+#' dat = simulateCarx(100, trueAR, trueX, trueSigma, lcl, ucl, seed=0)
+#' model0 <- carx(dat$y, dat$x,censorIndicator=dat$censorIndicator,
+#'               lowerCensorLimit = dat$lowerCensorLimit,
+#'               upperCensorLimit = dat$upperCensorLimit,
+#'               nAR = nAR,
+#'               getCI = FALSE)
+#' \dontrun{model1 <- carx(dat$y, dat$x,censorIndicator=dat$censorIndicator,
+#'               lowerCensorLimit = dat$lowerCensorLimit,
+#'               upperCensorLimit = dat$upperCensorLimit,
+#' 		           nAR = nAR,
+#' 		           getCI = TRUE,
+#'               ) }
 
 
 carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,nAR,
-												 prmtrX=NULL,prmtrAR=NULL,sigmaEps=NULL,
-			 tol=1e-4,max.iter=100,getCI=FALSE,alpha=0.95,nBootstrapSample=1000,
-			 skipIndex=NULL,verbose=FALSE)
+			 prmtrX=NULL,prmtrAR=NULL,sigmaEps=NULL,
+			 tol=1e-4,max.iter=500,getCI=TRUE,alpha=0.95,nBootstrapSample=1000,
+			 skipIndex=NULL,verbose=FALSE,...)
 {
 	verbose <- verbose || options()$verbose
 	nObs <- length(y)
-  
+
 	#standardize censoreIndicator
 	censorIndicator[ censorIndicator>0 ] <- 1
 	censorIndicator[ censorIndicator<0 ] <- -1
@@ -129,7 +144,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 			xIsOne <- FALSE
 	}else
 	{
-		warning("x is null, I will set x = ones, i.e., reprenting the intercept")
+		warning("x is null, I will set x = 1s, i.e., representing the intercept")
 		nX <- 1
 		externalVariable <- rep(1,nObs)
 		xIsOne <- TRUE
@@ -158,10 +173,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 
 	#parameters
 	#generic
-	#prmtrX <- numeric(nX)
-	#prmtrAR <- numeric(nAR)
-	#sigmaEps <- numeric(1)
-  if(is.null(prmtrX) || is.null(prmtrAR) || is.null(sigmaEps) )
+	if(is.null(prmtrX) || is.null(prmtrAR) || is.null(sigmaEps) )
 	{
 		prmtrX <- numeric(nX)
 		prmtrAR <- numeric(nAR)
@@ -169,12 +181,19 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		needInit <- TRUE
 	}
 	else
-	  needInit <- FALSE
+		needInit <- FALSE
 
 	#special to store estimated values
 	prmtrXEstd <- numeric(nX)
 	prmtrAREstd <- numeric(nAR)
 	sigmaEpsEstd <- numeric(1)
+
+	trend <- numeric(nObs)
+	covEta <- matrix(nrow=nAR+1, ncol = nAR+1)
+	wkMean <- matrix(nrow=nObs, ncol = nAR+1)
+	wkCov <- array(0, dim=c(nObs,nAR+1,nAR+1))
+	res <- numeric(nObs)
+
 
 	# working space
 	resetWK <- function()
@@ -270,11 +289,11 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 				tmpUpper[censored<0] <- lowerCensorLimit[idx:(idx-nAR)][tmpCensorIndicator<0]
 				if(abs(det(tmpVar)) < 0.001)
 				{
-					 message("var is nearly singluar")
+					message("var is nearly singluar")
 					print(covEta)
 					print(tmpVar)
 				}
-				ret <- mtmvnorm(tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
+				ret <- tmvtnorm::mtmvnorm(tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
 				wkMean[idx,tmpCensorIndicator!=0] <<- ret$'tmean'
 				wkCov[idx,tmpCensorIndicator!=0,tmpCensorIndicator!=0] <<- ret$'tvar'
 			}
@@ -315,7 +334,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		{
 			grad <- mat%*%prmtrAR - vec
 			tmp <- prmtrAR - grad
-			i <- 1 
+			i <- 1
 			while(any(abs(polyroot(c(1,-tmp)))<=1.0) && i <= 10)
 			{
 				tmp <- prmtrAR - grad/2^i
@@ -422,7 +441,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 
 	exptdLogLik <- function()
 	{
-	  val <- -(nObs - nSkip)*(1+log(sigmaEpsEstd^2))/2
+		val <- -(nObs - nSkip)*(1+log(sigmaEpsEstd^2))/2
 		val
 	}
 
@@ -523,7 +542,11 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	ret
 }
 
-
+#' provide a simple formula interface to the \code{carx} method
+#' @param formula the formula.
+#' @param data the data.
+#' @param ... other arguments supplied to \code{\link{carx.default}}.
+#' @export
 carx.formula <- function(formula, data=list(),...)
 {
 	mf <- model.frame(formula=formula,data=data)
@@ -536,24 +559,39 @@ carx.formula <- function(formula, data=list(),...)
 	est
 }
 
-
-
-logLik.carx <- function(x,...)
+#' returns the log-likelihood of a \code{carx} object
+#' @param object a fitted \code{carx} object.
+#' @param ... not used.
+#' @return the expected log-likelihood.
+#' @export
+logLik.carx <- function(object,...)
 {
-	ret <- x$logLik
+	ret <- object$logLik
 	class(ret) <- 'logLik.carx'
 	ret
 }
 
-carx.aic <- function(x,...)
+#' The AIC of a fitted  \code{carx} object
+#'
+#' return the AIC of a fitted \code{carx} object
+#' @param object a fitted  \code{carx} object.
+#' @param ... not used.
+#' @param k penalty for the number of parameters, default = 2.
+#' @return the AIC value.
+#' @export
+AIC.carx <- function(object,...,k=2)
 {
-	val <- 2*(-x$logLik + x$npar)
+	val <- -2*object$logLik + k*object$npar
+	#class(val) <- "AIC.carx"
 	val
 }
 
 
+
 #' print a short description of the fitted model (only a few lines)
-#' @param x a fitted model object
+#' @param x a fitted model object.
+#' @param ... not used.
+#' @export
 print.carx <- function(x,...)
 {
 	cat("Call:\n")
@@ -596,6 +634,10 @@ print.carx <- function(x,...)
 }
 
 #' summarize the fitted model on parameters, residuals and model fit
+#' @param object a fitted \code{carx} object.
+#' @param ... not used.
+#' @return a summary.
+#' @export
 summary.carx <- function(object,...)
 {
 	numDig <- function(x,d1,d2){
@@ -627,12 +669,15 @@ summary.carx <- function(object,...)
 	}
 	res <- list(call=object$call,
 		    coefficients=tab,
-		    aic = carx.aic(object))
+		    aic = AIC.carx(object))
 	class(res) <- "summary.carx"
 	res
 }
 
-
+#' print the summary of an \code{carx} object
+#' @param x a summary of an \code{carx} object.
+#' @param ... not used.
+#' @export
 print.summary.carx <- function(x,...)
 {
 	cat("Call:\n")

@@ -1,53 +1,49 @@
-#' get the residuals of a fitted \code{carx} object
-
-residuals.carx <- function(object,method="Gourieroux",...)
+#' compute the residuals of a fitted \code{carx} object
+#'
+#' \code{residuals.carx} computes the simulated residuals from a fitted \code{carx} object.
+#' @param object a fitted \code{carx} object.
+#' @param type a string indicates which type of residual is to be returned.
+#' "raw" returns the simulated residuals;
+#' "pearson" returns the raw residuals divided by estimated standard error of the residuals.
+#' @param ... not used.
+#' @return the simulated residuals.
+#' @export
+residuals.carx <- function(object,type="pearson",...)
 {
-	if( method == "Gourieroux")
-		return(residualsGrourieroux.carx(object,...))
-	else
-		return(residuals0.carx(object,...))
-}
-
-residuals0.carx <- function(object,...)
-{
-	#message("Calling residuals.carx")
 	nObs <- object$nObs
 	nAR <- object$nAR
+	y <- object$y
 
-	rsdl <- rep(NA,nObs)
 	trend <- object$x%*%object$prmtrX
 	eta <- object$y - trend
+	for(idx in 1:nAR)
+	{
+		if(object$censorIndicator[idx] > 0)
+			y[idx] = object$upperCensorLimit[idx]
+		else if(object$censorIndicator[idx] < 0 )
+				y[idx] = object$lowerCensorLimit[idx]
+	}
 
 	for(idx in (nAR+1):nObs)
 	{
-		#message(sprintf("calculating %i",idx))
-		if(all(object$censorIndicator[idx:(idx-nAR)]==0))
+		if(object$censorIndicator[idx] == 0)
 		{
-			rsdl[idx] <- (eta[idx] - eta[(idx-1):(idx-nAR)]%*%object$prmtrAR)/object$sigma
-			next
-		}
-		
-		currentCensorIndicator <- object$censorIndicator[idx]
-		if(all(object$censorIndicator[(idx-1):(idx-nAR)]==0)) #y[idx] is censored, but y[(idx-1):(idx-nAR)] are observed
-		{ 
-			mu <- eta[(idx-1):(idx-nAR)]%*%object$prmtrAR
-			if(currentCensorIndicator > 0)
-			{
-				climit <- object$upperCensorLimit[idx] - trend[idx]
-				val <- pnorm(climit, mu, object$sigma, lower.tail=FALSE)
-				rsdl[idx] <- qnorm(runif(1,0,val),lower.tail=FALSE)
-			}
-			else
-			{
-				climit <- object$lowerCensorLimit[idx]- trend[idx]
-				val <- pnorm(climit, mu, object$sigma, lower.tail=TRUE)
-				rsdl[idx] <- qnorm(runif(1,0,val), lower.tail=TRUE)
-			}
+			#message(sprintf("idx %i, not censored",idx))
 			next
 		}
 
-		#message(sprintf("Index %i is censored",idx))
-		#find the beginning index of nAR consecutive observations
+		if(all(object$censorIndicator[(idx-1):(idx-nAR)]==0))
+    {
+		  #message(sprintf("idx %i, fast ",idx))
+			tmpMean <- trend[idx] + eta[(idx-1):(idx-nAR)]%*%object$prmtrAR
+			if(object$censorIndicator[idx] > 0)
+				y[idx] <- tmvtnorm::rtmvnorm(1, mean=c(tmpMean), sigma=c(object$sigma),lower=object$upperCensorLimit[idx],upper=Inf,algorithm="gibbs")
+			else
+				y[idx] <- tmvtnorm::rtmvnorm(1, mean=c(tmpMean), sigma=c(object$sigma),lower=-Inf, upper = object$lowerCensorLimit[idx],algorithm="gibbs")
+			next
+		}
+
+		#message(sprintf("idx %i, slow",idx))
 		iStart <- 1
 		for(i in (idx-nAR):1)
 		{
@@ -56,54 +52,48 @@ residuals0.carx <- function(object,...)
 				iStart <- i
 				break
 			}
-		} 
+		}
 
-		nStart <- idx - iStart
+		nStart <- idx - iStart + 1
 		#message(sprintf("idx: %i, iStart: %i, nStart: %i",idx,iStart,nStart))
-	  #message("censoring occurs in latest nAR obs")
-		tmpCensorIndicator <- object$censorIndicator[(idx-1):iStart] #reverse order
+		tmpCensorIndicator <- object$censorIndicator[idx:iStart] #reverse order
 		nCensored <- sum(tmpCensorIndicator!=0)
-		covEta <- computeCovAR(object$prmtrAR, object$sigma, nStart+1)
+		covEta <- computeCovAR(object$prmtrAR, object$sigma, nStart)
 		if( nCensored < nStart )
 		{
-			conditionalIndex <- which(tmpCensorIndicator==0) + 1
+			conditionalIndex <- which(tmpCensorIndicator==0)
 			tmpY <- object$y[idx:iStart][conditionalIndex]
 			cdist <- conditionalDistMvnorm(tmpY, conditionalIndex, trend[idx:iStart], covEta)
 			tmpMean <- cdist$'mean'
 			tmpVar <- cdist$'var'
-		}else 
+		}else
 		{
 			tmpMean <- trend[idx:iStart]
 			tmpVar <- covEta
 		}
-
-		tmpLower <- rep(-Inf,length = nCensored+1) #( y[idx], censored obs)
-		tmpUpper <- rep(Inf,length = nCensored+1)
+		tmpLower <- rep(-Inf,length = nCensored) #( y[idx], censored obs)
+		tmpUpper <- rep(Inf,length = nCensored)
 		censored <- tmpCensorIndicator[tmpCensorIndicator!=0]
-		tmpLower[-1][censored>0] <- object$upperCensorLimit[(idx-1):iStart][tmpCensorIndicator>0]
-		tmpUpper[-1][censored<0] <- object$lowerCensorLimit[(idx-1):iStart][tmpCensorIndicator<0]
-
-		if(currentCensorIndicator == 0)
-		{ 
-			pval <- ptmvnorm.marginal(object$y[idx], 1, mean=tmpMean, sigma=tmpVar,lower=tmpLower,upper=tmpUpper)
-			rsdl[idx] <- qnorm(pval,lower.tail=TRUE)
-		}
-		else
-		{
-			if(currentCensorIndicator > 0)
-			{ 
-				pval <- ptmvnorm.marginal(object$upperCensorLimit[idx], 1, mean=tmpMean, sigma=tmpVar,lower=tmpLower,upper=tmpUpper)
-				rsdl[idx]  <- qnorm(runif(1, 0, 1-pval), lower.tail=FALSE)
-			}
-			else
-			{
-				pval <- ptmvnorm.marginal(object$lowerCensorLimit[idx], 1, mean=tmpMean, sigma=tmpVar,lower=tmpLower,upper=tmpUpper)
-				rsdl[idx]  <- qnorm(runif(1, 0, pval), lower.tail=TRUE)
-			}
-		}
+		tmpLower[censored>0] <- object$upperCensorLimit[idx:iStart][tmpCensorIndicator>0]
+		tmpUpper[censored<0] <- object$lowerCensorLimit[idx:iStart][tmpCensorIndicator<0]
+		ysim <- tmvtnorm::rtmvnorm(1, mean=tmpMean, sigma=tmpVar, lower=tmpLower, upper=tmpUpper,algorithm="gibbs")
+		y[idx] <- ysim[1]
+  }
+	#print(y)
+	#print(object)
+	#m1 <- arimax(y,order=c(object$nAR,0,0),xreg = data.frame(object$x),include.mean=FALSE,transform.pars=FALSE,init=c(object$prmtrAR,object$prmtrX),method="ML")
+	#print(m1)
+	m2 <- carx(y, object$x, rep(0,nObs), NULL, NULL, object$nAR, getCI=FALSE)
+	#print(m2)
+	rsdl <- numeric(nObs)
+	eta <- y - object$x%*%m2$prmtrX
+	for(idx in (nAR+1):nObs)
+	{
+		rsdl[idx] <- eta[idx] - eta[(idx-1):(idx-nAR)]%*%m2$prmtrAR
 	}
-	rsdl
+	if(type=="raw")
+		return(rsdl)
+	if(type=="pearson")
+	        return(rsdl/m2$sigma)
 }
 
-
-#debug(residuals.carx)
