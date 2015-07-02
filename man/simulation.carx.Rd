@@ -45,7 +45,6 @@ Note that the exogenous variables are simulated from independent standard normal
 }
 \examples{
 simulation.carx(nRep=1) # nRep == 1
-simulation.carx(nRep=10) # nRep == 1
 \dontrun{simulation.carx()} #using default settings
 \dontrun{simulation.carx(ucl=Inf)} # no right censoring
 \dontrun{simulation.carx(lcl=-Inf)} # no left censoring

@@ -32,7 +32,11 @@ simulateCarx <- function(nObs, prmtrAR, prmtrX, sigmaEps, lowerCensorLimit, uppe
 	eps <- rnorm(nObs,0, sigmaEps)
 
 	if(is.null(x))
+  {
 		x <- matrix(rnorm(nObs*nX), nrow= nObs, ncol = nX)
+    #colnames(x) <- paste0("X",seq(1,length(nX)))
+  }
+
 	trend <- x%*%prmtrX
 
 	eta <- numeric(nObs)

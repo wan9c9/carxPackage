@@ -167,7 +167,13 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		   censorIndicator = censorIndicator,
 		   lowerCensorLimit = lowerCensorLimit,
 		   upperCensorLimit = upperCensorLimit,
-		   skipIndex = skipIndex
+       getCI = getCI,
+       tol = tol,
+       max.iter = max.iter,
+       alpha = alpha,
+       nBootstrapSample = nBootstrapSample,
+		   skipIndex = skipIndex,
+       verbose = verbose
 		   )
 	#print(ret)
 
@@ -203,6 +209,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		wkMean <<- matrix(nrow=nObs, ncol = nAR+1)
 		wkCov <<- array(0, dim=c(nObs,nAR+1,nAR+1))
 		res <<- numeric(nObs)
+    pVal <<- numeric(getNPrmtr())
 
 		#initialize wkMean
 		for(idx in seq(1,nObs)[-skipIndex])
@@ -287,12 +294,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 				tmpLower[censored>0] <- upperCensorLimit[idx:(idx-nAR)][tmpCensorIndicator>0]
 				# upper limit is lower censor limit
 				tmpUpper[censored<0] <- lowerCensorLimit[idx:(idx-nAR)][tmpCensorIndicator<0]
-				if(abs(det(tmpVar)) < 0.001)
-				{
-					message("var is nearly singluar")
-					print(covEta)
-					print(tmpVar)
-				}
+				#if(abs(det(tmpVar)) < 0.001) warning("covariance matrix is nearly singluar.")
 				ret <- tmvtnorm::mtmvnorm(tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
 				wkMean[idx,tmpCensorIndicator!=0] <<- ret$'tmean'
 				wkCov[idx,tmpCensorIndicator!=0,tmpCensorIndicator!=0] <<- ret$'tvar'
@@ -469,20 +471,22 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		#message(sprintf('Bootstraping CI'))
 		yOriginal <- y #copy y as it will be overwritten
 		tmpResult <- matrix(0,nBootstrapSample,getNPrmtr())
-		pb <- txtProgressBar(1,nBootstrapSample,style=3)
+		#pb <- txtProgressBar(1,nBootstrapSample,style=3)
 		for(i in 1:nBootstrapSample){
 			#message(sprintf('Bootstraping CI %i/%i',i,nBootstrapSample))
-			setTxtProgressBar(pb,i)
+			#setTxtProgressBar(pb,i)
 			setInitPrmtrForBootstrap()
 			bootstrapSample()
 			resetWK()
 			estimatePrmtr(tol,max.iter)
 			tmpResult[i,] <- getPrmtr()
 		}
-		close(pb)
+		#close(pb)
 		qv <- c((1-alpha)/2,1-(1-alpha)/2)
 		for(j in 1:getNPrmtr()){
 			ci[j,] <<- quantile(tmpResult[,j],qv)
+      pVal[j] <- mean(tmpResult[,j]>getEstdPrmtr()[j])
+
 		}
 		covMat <<- cov(tmpResult)
 		y <<- yOriginal #set back observed data
@@ -534,9 +538,11 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		colnames(covMat) <- rnames
 		ret$CI <- ci
 		ret$vcov <- covMat
+    ret$pVal <- pVal
 	}else{
 		ret$CI <- NULL
 		ret$vcov <- NULL
+    ret$pVal <- NULL
 	}
 	class(ret) <- "carx"
 	ret
@@ -623,7 +629,7 @@ print.carx <- function(x,...)
 	print(x$prmtrInit)
 	cat("\nprmtrEstd:\n")
 	print(x$prmtrEstd)
-	if(!is.null(x$CI)){
+	if(x$getCI){
 		cat("\nconfidence interval\n")
 		print(x$CI)
 		cat("\nvariance-covariance matrix\n")
@@ -647,10 +653,11 @@ summary.carx <- function(object,...)
 		y
 	}
 
-	if(is.null(object$CI)){
-		tab <- cbind(Estimate = c(coef(object),object$sigma))
-		#tab <- cbind(Estimate = numDig(c(coef(object),object$sigma),2,4))
-	}else{
+	if(is.null(object$CI))
+  {
+		tab <- cbind(Estimate = object$prmtrEstd)
+	}else
+  {
 		se <- sqrt(diag(object$vcov))
 		tVal <- c(coef(object),object$sigma)/se
 
@@ -659,7 +666,8 @@ summary.carx <- function(object,...)
 		tab <- cbind(Estimate = est,
 			     StdErr =  se,
 			     lowerCI = object$CI[,1],
-			     upperCI = object$CI[,2]
+			     upperCI = object$CI[,2],
+           p.value = object$pVal
 			     )
 		#tab <- cbind(Estimate = numDig(c(coef(object),object$sigma),2,4),
 		#	 StdErr = numDig(se,2,4),
@@ -685,7 +693,10 @@ print.summary.carx <- function(x,...)
 	cat("\n")
 
 	cat("\nCoefficients:\n")
-	print(x$coefficients)
+	#print(x$coefficients)
+  pval <- 'p.value' %in% colnames(x$coefficients)
+  printCoefmat(x$coefficients, P.value = pval, has.Pvalue = pval)
+ cat(sprintf("Note: confidence intervals are based on %i bootstraps.  P.values are one-sided.\n", x$nBootstrapSample))
 
 	cat("\nAIC:\n")
 	print(x$aic)

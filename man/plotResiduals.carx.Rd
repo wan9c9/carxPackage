@@ -4,32 +4,20 @@
 \alias{plotResiduals.carx}
 \title{Plotting the residual of a fitted \code{carx} object}
 \usage{
-plotResiduals.carx(object, x = NULL, xlab = "", ylab = "",
-  saveFig = NULL, width = 6, height = 5, units = "in", res = 300, ...)
+plotResiduals.carx(object, residualType = "pearson", x = NULL,
+  xlab = "Index", ylab = "Residual", ...)
 }
 \arguments{
 \item{object}{a fitted \code{carx} object.}
 
-\item{x}{indicates x variable, default = \code{NULL}, it will plot the time series plot the residuals; if x is "fitted", it will plot the residuals against the fitted values; if x is a vector, it will plot the residual against the vector.}
+\item{residualType}{the type of the residual.}
 
-\item{xlab}{the label for x axis, default = "Index".}
+\item{x}{indicates x variable,
+default = \code{NULL}, the time series plot of residuals will be plotted;
+if x is "fitted", the residuals against the fitted values;
+if x is a vector, the residuals against the supplied vector.}
 
-\item{ylab}{the label for y axis, default = "Residuals".}
-
-\item{saveFig}{indicates whether to save the figure, default = \code{NULL} indicates the plot will be sent to the display, otherwise, saveFig need to be a file name to save the file, with postfix ".eps", ".jpg" or ".svg".}
-
-\item{width}{the width of the figure, if to be saved.}
-
-\item{height}{the height of the figure, if to be saved.}
-
-\item{units}{the units width and height of the figure.}
-
-\item{res}{the resolution of the figure, only needed if the figure is to be saved in "jpg" format.}
-
-\item{...}{other parameters to be supplied to \code{residuals.carx} or \code{plot}.}
-}
-\value{
-no value is returned, a figure will either be sent to display or be saved.
+\item{...}{other parameters to be supplied to \code{plot}.}
 }
 \description{
 Plot a fitted \code{carx} object with other settings

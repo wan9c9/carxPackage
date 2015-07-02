@@ -3,7 +3,7 @@
 #' \code{plot.carx} plots a fitted \code{carx} object with other settings
 #' the y axis will be the response, the x axis can be supplied by the user.
 #' @param x a fitted \code{carx} object.
-#' @param Fun an optional function to be applied to the data related to the
+#' @param FUN an optional function to be applied to the data related to the
 #' responses of the object, e.g., if a log transformation has been applied to the data, an exp function can be supplied so that the data plotted are at the same scale of the orginal data, default = \code{NULL}.
 #' @param xAxisVar an optional vector to be plotted as the x variable, default =
 #' \code{NULL} corresponds time series plot, other vectors are assumed to be
@@ -56,9 +56,10 @@ plot.carx <- function(x,FUN=identity, xAxisVar=NULL, xlab="Index", ylab="Respons
 		y[object$censorIndicator<0] <- lcl[object$censorIndicator<0]
 
 	
-	plot(xAxisVar, y, type="n", xaxt="n", yaxt="n")
-	this.legend.size <- legend("topright",legend=lgd,lty=plty,col=pcol,plot=FALSE)
-	ylim[2] <- 1.04*(ylim[2] + this.legend.size$rect$h)
+	#plot(xAxisVar, y, type="n", xaxt="n", yaxt="n")
+	#this.legend.size <- legend("topright",legend=lgd,lty=plty,col=pcol,plot=FALSE)
+	#ylim[2] <- 1.04*(ylim[2] + this.legend.size$rect$h)
+	ylim[2] <- 1.3*ylim[2]
 
 	plot(xAxisVar, y, type="l", lty=1, xlab=xlab, ylab=ylab, ylim=ylim, col='black',...)
 	lines(xAxisVar, yh, lty=2, col='blue')
@@ -83,34 +84,17 @@ plot.carx <- function(x,FUN=identity, xAxisVar=NULL, xlab="Index", ylab="Respons
 #' Plot a fitted \code{carx} object with other settings
 #' the y axis will be the response, the x axis can be supplied by the user
 #' @param object a fitted \code{carx} object.
-#' @param x indicates x variable, default = \code{NULL}, it will plot the time series plot the residuals; if x is "fitted", it will plot the residuals against the fitted values; if x is a vector, it will plot the residual against the vector.
-#' @param xlab the label for x axis, default = "Index".
-#' @param ylab the label for y axis, default = "Residuals".
-#' @param saveFig indicates whether to save the figure, default = \code{NULL} indicates the plot will be sent to the display, otherwise, saveFig need to be a file name to save the file, with postfix ".eps", ".jpg" or ".svg".
-#' @param width the width of the figure, if to be saved.
-#' @param height the height of the figure, if to be saved.
-#' @param units the units width and height of the figure.
-#' @param res the resolution of the figure, only needed if the figure is to be saved in "jpg" format.
-#' @param ... other parameters to be supplied to \code{residuals.carx} or \code{plot}.
-#' @return no value is returned, a figure will either be sent to display or be saved.
+#' @param residualType the type of the residual.
+#' @param x indicates x variable, 
+#' default = \code{NULL}, the time series plot of residuals will be plotted; 
+#' if x is "fitted", the residuals against the fitted values; 
+#' if x is a vector, the residuals against the supplied vector.
+#' @param ... other parameters to be supplied to \code{plot}.
 #' @export
 
-plotResiduals.carx <- function(object,x=NULL,xlab="",ylab="",saveFig=NULL,width=6,height=5,units="in",res=300,...)
+plotResiduals.carx <- function(object, residualType="pearson", x=NULL,xlab="Index",ylab="Residual",...)
 {
-	if(!is.null(saveFig))
-	{
-		if(substring(saveFig,nchar(saveFig)-3) == ".eps")
-		{
-			setEPS()
-			postscript(saveFig)
-		}
-		else if (substring(saveFig,nchar(saveFig)-3) == ".svg")
-			svg(saveFig)
-    else if (substring(saveFig,nchar(saveFig)-3) == ".jpg")
-			jpeg(saveFig,width=width,height=height,units=units,res=res,quality=100)
-	}
-
-	y <- residuals(object,...)
+	y <- residuals(object,residualType)
 	if(is.null(x))
 	{
 		x <- 1:length(y)
@@ -126,39 +110,17 @@ plotResiduals.carx <- function(object,x=NULL,xlab="",ylab="",saveFig=NULL,width=
 	}
 	plot(x,y,xlab=xlab,ylab=ylab,...)
 	abline(h=0,col="black",lty=3)
-  if(!is.null(saveFig))
-		dev.off()
 }
 
 #' Plotting the ACF of the residuals of a fitted \code{carx} object
 #'
 #' Plot the ACF of the residuals of a fitted \code{carx} object
 #' @param object a fitted \code{carx} object.
-#' @param saveFig indicates whether to save the figure, default = \code{NULL} indicates the plot will be sent to the display, otherwise, saveFig need to be a file name to save the file, with postfix ".eps", ".jpg" or ".svg".
-#' @param width the width of the figure, if to be saved.
-#' @param height the height of the figure, if to be saved.
-#' @param units the units width and height of the figure.
-#' @param res the resolution of the figure, only needed if the figure is to be saved in "jpg" format.
-#' @param main the main title in the plot.
-#' @param ... other parameters to be supplied to \code{residuals.carx} or \code{plot}.
+#' @param ... other parameters to be supplied to \code{acf}.
 #' @return no value is returned, a figure will either be sent to display or be saved.
 #' @export
-plotResAcf <- function(object,saveFig=NULL,width=6,height=5,units="in",res=300,main="",...)
+plotResAcf.carx <- function(object,...)
 {
-	if(!is.null(saveFig))
-	{
-		if(substring(saveFig,nchar(saveFig)-3) == ".eps")
-		{
-			setEPS()
-			postscript(saveFig)
-		}
-		else if (substring(saveFig,nchar(saveFig)-3) == ".svg")
-			svg(saveFig)
-    else if (substring(saveFig,nchar(saveFig)-3) == ".jpg")
-			jpeg(saveFig,width=width,height=height,units=units,res=res,quality=100)
-	}
-	acf(residuals(object,...),na.action=na.pass,main=main,...)
-  if(!is.null(saveFig))
-		dev.off()
+	acf(residuals(object),na.action=na.pass,...)
 }
 

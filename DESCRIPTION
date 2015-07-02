@@ -12,12 +12,10 @@ Depends: R (>= 1.9.0)
 License: GPL-3
 LazyData: true
 Imports:
-	stats,
 	tmvtnorm,
 	matrixStats,
 	foreach,
 	doParallel,
 	parallel,
-	zoo,
 	doMC
 Suggests: testthat

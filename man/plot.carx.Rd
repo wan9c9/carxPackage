@@ -10,6 +10,9 @@
 \arguments{
 \item{x}{a fitted \code{carx} object.}
 
+\item{FUN}{an optional function to be applied to the data related to the
+responses of the object, e.g., if a log transformation has been applied to the data, an exp function can be supplied so that the data plotted are at the same scale of the orginal data, default = \code{NULL}.}
+
 \item{xAxisVar}{an optional vector to be plotted as the x variable, default =
 \code{NULL} corresponds time series plot, other vectors are assumed to be
 sequential.}
@@ -21,9 +24,6 @@ sequential.}
 \item{outliers}{a \code{NULL} value or a vector, each element of which indicates a location at which the response is treated as an outlier, default = \code{NULL}, i.e., no outlier}
 
 \item{...}{other parameters supplied to the generic function \code{plot}.}
-
-\item{Fun}{an optional function to be applied to the data related to the
-responses of the object, e.g., if a log transformation has been applied to the data, an exp function can be supplied so that the data plotted are at the same scale of the orginal data, default = \code{NULL}.}
 }
 \description{
 \code{plot.carx} plots a fitted \code{carx} object with other settings
