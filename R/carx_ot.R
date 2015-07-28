@@ -1,21 +1,22 @@
 
 #' detecting the outlier of the response data modelled by \code{carx}
 
-ot.carx <- function(model){
+ot.carx <- function(object)
+{
 	#message("detecting outliers")
 	nSample <- 10000
-	threshold <- 0.025/model$nObs
-	eps <- rnorm(nSample,0,model$sigma)
-	trend <- model$x%*%model$prmtrX
-	covEta <- computeCovAR(model$prmtrAR, model$sigma,lag=model$nAR)
-	nObs <- model$nObs
-	nAR <- model$nAR
-	prmtrAR <- model$prmtrAR
-	skipIndex <- model$skipIndex
-	y <- model$y
-	censorIndicator <- model$censorIndicator
-	lowerCensorLimit <- model$lowerCensorLimit
-	upperCensorLimit <- model$upperCensorLimit
+	threshold <- 0.025/object$nObs
+	eps <- rnorm(nSample,0,object$sigma)
+	trend <- object$x%*%object$prmtrX
+	covEta <- computeCovAR(object$prmtrAR, object$sigma,lag=object$nAR)
+	nObs <- object$nObs
+	nAR <- object$nAR
+	prmtrAR <- object$prmtrAR
+	skipIndex <- object$skipIndex
+	y <- object$y
+	censorIndicator <- object$censorIndicator
+	lowerCensorLimit <- object$lowerCensorLimit
+	upperCensorLimit <- object$upperCensorLimit
 
 	y[censorIndicator>0] <- upperCensorLimit[censorIndicator>0]
 	y[censorIndicator<0] <- lowerCensorLimit[censorIndicator<0]
@@ -46,8 +47,8 @@ ot.carx <- function(model){
 			}
       tmpLower <- rep(-Inf,length = nCensored)
       tmpUpper <- rep(Inf,length = nCensored)
-      tmpLower[censored>0] <- model$upperCensorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator>0]
-      tmpUpper[censored<0] <- model$lowerCensorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator<0]
+      tmpLower[censored>0] <- object$upperCensorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator>0]
+      tmpUpper[censored<0] <- object$lowerCensorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator<0]
 			smpl <- tmvtnorm::rtmvnorm(nSample,tmpMean,tmpVar,lower=tmpLower,upper=tmpUpper,algorithm="gibbs")
 			smpl <- as.matrix(smpl)
 			ySmpl <- numeric(nSample)
@@ -60,7 +61,7 @@ ot.carx <- function(model){
 		}
 		else{
 			r <- y[idx]-trend[idx] - (wkm-trend[(idx-1):(idx-nAR)])%*%prmtrAR
-			r <- r/model$sigma
+			r <- r/object$sigma
 			pU <- pnorm(r,lower.tail=FALSE)
 			pL <- pnorm(r,lower.tail=TRUE)
 		}
@@ -74,35 +75,51 @@ ot.carx <- function(model){
 		-1
 }
 
-
-
-outlierDetection.carx <- function(object)
+# We need to run the carx function and have the original object first. 
+detect.outlier.carx <- function(object,data,oi.prefix="OI_")
 {
-  ot <- 1
-  nOL <- 0
-  olv <- NULL
-
-  while(ot>0)
+  newObj=object
+  newFormula = formula(object)
+  oiVec=NULL
+  ot=ot.carx(object)
+  ot = 1
+  # If data is not provided:
+  if(missing(data))
   {
-    ot <- ot.carx(object)
-    if(ot != -1) # find an outlier
-    { 
-      if(nOL == 0) # no outlier yet
-        olv <- ot
+    while(ot !=-1) 
+    {
+      ot=ot.carx(object)
+      if(!is.null(oiVec) & ot %in% oiVec)
+        break
+      oi=numeric(newObj$nObs)
+      oi[ot]=1
+      newVar=paste0(oi.prefix,ot)
+      if(is.null(newFormula) | missing(data))
+      {
+      newx=data.matrix(data.frame(newObj$x,newVar=oi))
+      newObj=carx(newObj$y,newx,
+                 censorIndicator=object$censorIndicator,
+                 lowerCensorLimit=object$lowerCensorLimit,
+                 upperCensorLimit=object$upperCensorLimit,
+                 nAR=object$nAR,
+                 prmtrX = object$prmtrX,
+                 prmtrAR = object$prmtrAR,
+                 sigmaEps = object$sigma,
+                 tol = object$tol,
+                 max.iter = object$max.iter,
+                 getCI=FALSE,
+                 alpha = object$alpha,
+                 nBootstrapSample = object$nBootstrapSample,
+                 skipIndex=object$skipIndex,
+                 verbose = FALSE
+                 )
+      }
       else
       {
-        if(is.vector(olv) && ot %in% olv)
-          break
-        olv <- c(olv,ot)
-      }
-      nOL <- nOL + 1
-      oi <- numeric(object$nObs)
-      oi[ot] <- 1
-      newVar <-paste0("OutlierIndicator_",ot)
-      data1 <- object$x
-      data1[,newVar] <- oi
-			newFormula <- update(formula(object), as.formula(paste("~.+",newVar)))
-		  newObj <- carx(newFormula, data = data1, 
+        newData = data
+        newData[,newVar] <- oi
+        newFormula = update(newFormula, as.formula(paste("~.+",newVar)))
+		    newObj <- carx(newFormula, data = newData,
                      censorIndicator=object$censorIndicator,
                      lowerCensorLimit=object$lowerCensorLimit,
                      upperCensorLimit=object$upperCensorLimit,
@@ -118,7 +135,12 @@ outlierDetection.carx <- function(object)
                      skipIndex=object$skipIndex,
                      verbose = FALSE
                      )
+      }
+      oiVec=c(oiVec,ot)
     }
-  }
-  newObj
+    list("updatedModel"= tmp,"outlierIndices"=oiVec)
+ }
 }
+
+
+
