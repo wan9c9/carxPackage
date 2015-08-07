@@ -39,7 +39,7 @@ goodnessOfFit.carx  <- function(object,nLag=10, seed = NULL, bootstrap=FALSE, nR
 	if(!is.null(seed))
 		set.seed(seed)
 	#message("Calling goodnessOfFit.carx")
-	res <- residuals(object)[-(1:object$nAR)]
+	res <- residuals(object)[-(1:object$p)]
 	tStat <- lbStat(res,nLag)
 
 	if(bootstrap)
@@ -52,9 +52,9 @@ goodnessOfFit.carx  <- function(object,nLag=10, seed = NULL, bootstrap=FALSE, nR
 		simTStat <- foreach::foreach(i=1:nRep,.combine='c') %dopar%
 		{
 			message(sprintf("Diagnostics: nRep = %i",i))
-			sim <- simulateCarx(object$nObs, object$prmtrAR, object$prmtrX,object$sigma, object$lowerCensorLimit,object$upperCensorLimit,x = object$x)
-			obj <- carx(sim$y, sim$x, sim$censorIndicator, object$lowerCensorLimit, object$upperCensorLimit, object$nAR, prmtrX=object$prmtrX,prmtrAR=object$prmtrAR,sigmaEps=object$sigma, getCI=FALSE)
-			tmpRes <- residuals(obj)[-(1:object$nAR)]
+			sim <- carx.sim(object$nObs, object$prmtrAR, object$prmtrX,object$sigma, object$lcl,object$ucl,x = object$x)
+			obj <- carx(sim$y, sim$x, sim$ci, object$lcl, object$ucl, object$p, prmtrX=object$prmtrX,prmtrAR=object$prmtrAR,sigmaEps=object$sigma, getCI=FALSE)
+			tmpRes <- residuals(obj)[-(1:object$p)]
 			lbStat(tmpRes,nLag)
 		}
 		pVal <- sum(simTStat > tStat)/nRep
@@ -62,7 +62,7 @@ goodnessOfFit.carx  <- function(object,nLag=10, seed = NULL, bootstrap=FALSE, nR
 	}
 	else
 	{
-		return(list(tVal = tStat, pVal = pchisq(tStat,df = nLag - object$nAR )))
+		return(list(tVal = tStat, pVal = pchisq(tStat,df = nLag - object$p )))
 	}
 
 }

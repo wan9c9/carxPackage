@@ -8,18 +8,18 @@ ot.carx <- function(object)
 	threshold <- 0.025/object$nObs
 	eps <- rnorm(nSample,0,object$sigma)
 	trend <- object$x%*%object$prmtrX
-	covEta <- computeCovAR(object$prmtrAR, object$sigma,lag=object$nAR)
+	covEta <- computeCovAR(object$prmtrAR, object$sigma,lag=object$p)
 	nObs <- object$nObs
-	nAR <- object$nAR
+	p <- object$p
 	prmtrAR <- object$prmtrAR
 	skipIndex <- object$skipIndex
 	y <- object$y
-	censorIndicator <- object$censorIndicator
-	lowerCensorLimit <- object$lowerCensorLimit
-	upperCensorLimit <- object$upperCensorLimit
+	ci <- object$ci
+	lcl <- object$lcl
+	ucl <- object$ucl
 
-	y[censorIndicator>0] <- upperCensorLimit[censorIndicator>0]
-	y[censorIndicator<0] <- lowerCensorLimit[censorIndicator<0]
+	y[ci>0] <- ucl[ci>0]
+	y[ci<0] <- lcl[ci<0]
 
 	pValues <- numeric(nObs)
 	pValues[skipIndex] <- 1
@@ -27,40 +27,40 @@ ot.carx <- function(object)
 	for(idx in seq(1,nObs)[-skipIndex])
 	{
 		#message(sprintf("checking %i",idx))
-		wkm <- y[(idx-1):(idx-nAR)]
-		tmpCensorIndicator <- censorIndicator[(idx-1):(idx-nAR)]
+		wkm <- y[(idx-1):(idx-p)]
+		tmpCensorIndicator <- ci[(idx-1):(idx-p)]
 		nCensored <- sum(tmpCensorIndicator!=0)
     censored <- tmpCensorIndicator[tmpCensorIndicator!=0]
 		if(nCensored)   #at least one is censored
 		{
-			if( nCensored < nAR ) #not all are censored
+			if( nCensored < p ) #not all are censored
 			{ 
 				conditionalIndex <- which(tmpCensorIndicator==0) #indices of known values
-				tmpY <- y[(idx-1):(idx-nAR)][conditionalIndex] #known values
-				tmpM <- trend[(idx-1):(idx-nAR)]
+				tmpY <- y[(idx-1):(idx-p)][conditionalIndex] #known values
+				tmpM <- trend[(idx-1):(idx-p)]
 				cdist <- conditionalDistMvnorm(tmpY, conditionalIndex,tmpM,covEta)
 				tmpMean <- cdist$'mean'
 				tmpVar <- cdist$'var'
 			}else{ 
-				tmpMean <- trend[(idx-1):(idx-nAR)]
+				tmpMean <- trend[(idx-1):(idx-p)]
 				tmpVar <- covEta
 			}
       tmpLower <- rep(-Inf,length = nCensored)
       tmpUpper <- rep(Inf,length = nCensored)
-      tmpLower[censored>0] <- object$upperCensorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator>0]
-      tmpUpper[censored<0] <- object$lowerCensorLimit[(idx-1):(idx-nAR)][tmpCensorIndicator<0]
+      tmpLower[censored>0] <- object$ucl[(idx-1):(idx-p)][tmpCensorIndicator>0]
+      tmpUpper[censored<0] <- object$lcl[(idx-1):(idx-p)][tmpCensorIndicator<0]
 			smpl <- tmvtnorm::rtmvnorm(nSample,tmpMean,tmpVar,lower=tmpLower,upper=tmpUpper,algorithm="gibbs")
 			smpl <- as.matrix(smpl)
 			ySmpl <- numeric(nSample)
 			for(i in 1:nSample){
 				wkm[tmpCensorIndicator!=0] <- smpl[i,]
-				ySmpl[i] <- trend[idx] + (wkm - trend[(idx-1):(idx-nAR)])%*%prmtrAR + eps[i]
+				ySmpl[i] <- trend[idx] + (wkm - trend[(idx-1):(idx-p)])%*%prmtrAR + eps[i]
 			}
 			pU <- sum(ySmpl > y[idx])/nSample
 			pL <- sum(ySmpl < y[idx])/nSample
 		}
 		else{
-			r <- y[idx]-trend[idx] - (wkm-trend[(idx-1):(idx-nAR)])%*%prmtrAR
+			r <- y[idx]-trend[idx] - (wkm-trend[(idx-1):(idx-p)])%*%prmtrAR
 			r <- r/object$sigma
 			pU <- pnorm(r,lower.tail=FALSE)
 			pL <- pnorm(r,lower.tail=TRUE)
@@ -81,9 +81,9 @@ outlier <- function(object,data=NULL,oi.prefix="OI_") UseMethod("outlier")
 outlier.carx <- function(object,data=NULL,oi.prefix="OI_")
 {
   newObj = object
-
   newFormula = NULL
   tryCatch({newFormula=formula(object)},error=function(e){newFormula=NULL})
+
   oiVec = NULL
   ot = -1
   while(TRUE)
@@ -99,18 +99,18 @@ outlier.carx <- function(object,data=NULL,oi.prefix="OI_")
       newx=data.frame(newObj$x)
       newx[,newVar] <- oi
       newObj=carx(object$y,newx,
-                 censorIndicator=object$censorIndicator,
-                 lowerCensorLimit=object$lowerCensorLimit,
-                 upperCensorLimit=object$upperCensorLimit,
-                 nAR=object$nAR,
+                 ci=object$ci,
+                 lcl=object$lcl,
+                 ucl=object$ucl,
+                 p=object$p,
                  prmtrX = c(object$prmtrX,0),
                  prmtrAR = object$prmtrAR,
                  sigmaEps = object$sigma,
                  tol = object$tol,
                  max.iter = object$max.iter,
                  getCI=FALSE,
-                 alpha = object$alpha,
-                 nBootstrapSample = object$nBootstrapSample,
+                 CI.level = object$CI.level,
+                 b = object$b,
                  skipIndex=object$skipIndex,
                  verbose = FALSE
                  )
@@ -121,18 +121,18 @@ outlier.carx <- function(object,data=NULL,oi.prefix="OI_")
       newData[,newVar] <- oi
       newFormula = update(newFormula, as.formula(paste("~.+",newVar)))
       newObj <- carx(newFormula, data = newData,
-                   censorIndicator=object$censorIndicator,
-                   lowerCensorLimit=object$lowerCensorLimit,
-                   upperCensorLimit=object$upperCensorLimit,
-                   nAR=object$nAR,
+                   ci=object$ci,
+                   lcl=object$lcl,
+                   ucl=object$ucl,
+                   p=object$p,
                    prmtrX = c(object$prmtrX,0),
                    prmtrAR = object$prmtrAR,
                    sigmaEps = object$sigma,
                    tol = object$tol,
                    max.iter = object$max.iter,
                    getCI=FALSE,
-                   alpha = object$alpha,
-                   nBootstrapSample = object$nBootstrapSample,
+                   CI.level = object$CI.level,
+                   b = object$b,
                    skipIndex=object$skipIndex,
                    verbose = FALSE
                    )

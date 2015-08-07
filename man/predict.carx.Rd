@@ -18,7 +18,7 @@ Otherwise, an matrix of new observations is required for give predictions.}
 
 \item{level}{The level used to construct the Confidence interval, default = 0.95.}
 
-\item{nRep}{The number of replications to be performed when censoring exists in the last \code{nAR}
+\item{nRep}{The number of replications to be performed when censoring exists in the last \code{p}
 observations, default = 1000.}
 
 \item{...}{not used.}

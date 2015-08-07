@@ -20,22 +20,22 @@ carx <- function(y,...) UseMethod("carx")
 #'
 #' \code{carx.default} uses given data and other settings to estimate the parameters of CARX, and optionally compute the standard error or confidence intervals of parameter estimates by parametric bootstrap.
 #' @param y a vector of possibly censored responses, only uncensored observation
-#' marked by zeros of \code{censorIndicator} are used.
+#' marked by zeros of \code{ci} are used.
 #' @param x a matrix of covariates, or some object which can be coerced to matrix.
-#' @param censorIndicator a vector of -1,0,1's indicating that the corresponding y is
-#' left-censored, not censored, and right-censored resectively.
-#' @param lowerCensorLimit a vector of lower censor limits or a number assuming constant limit.
-#' @param upperCensorLimit a vector of upper censor limits or a number assuming constant limit.
-#' @param nAR the order of AR model for the regression errors.
+#' @param ci a vector of -1,0,1's indicating that the corresponding y is
+#' left-censored, not censored, and right-censored respectively.
+#' @param lcl a vector of lower censoring limits, or a number assuming constant limit, default = NULL, implying no lower censoring limit.
+#' @param ucl a vector of upper censoring limits, or a number assuming constant limit, default = NULL, implying no upper censoring limit.
+#' @param p the order of AR model for the regression errors, default = 1.
 #' @param prmtrX the initial value for the parameter of \code{x}, default = \code{NULL}.
 #' @param prmtrAR the initial value for the AR coefficients, default = \code{NULL}.
 #' @param sigmaEps the initial value for the standard deviation of the errors of the AR process, default = \code{NULL}.
 #' @param tol the tolerance in estimating the parameters, default = 1.0e-4.
 #' @param max.iter maximum number of iterations allowed when estimating parameters, default = 500.
-#' @param getCI bool value to indicate if the confidence interval for the
+#' @param CI.compute bool value to indicate if the confidence interval for the
 #' parameter is to be constructed, default = \code{TRUE}.
-#' @param alpha numeric value in (0,1) to get the \code{alpha} confidence interval for the parameter, default = 0.95.
-#' @param nBootstrapSample number of bootstrap samples when estimating confidence interval for the parameter, default = 1000.
+#' @param CI.level numeric value in (0,1) to get the \code{CI.level} confidence interval for the parameter, default = 0.95.
+#' @param b number of bootstrap samples when estimating confidence interval for the parameter, default = 1000.
 #' @param skipIndex a vector of indices indicating indices to be skipped, as some initial values are needed to calculate the conditional log-likelihood, also is the initial values to calculate the conditional log-likelihood, useful if there are multiple segment of series in the whole series.
 #' @param verbose bool value indicates whether to print intermediate information, default = FALSE.
 #' @param ... not used.
@@ -43,92 +43,85 @@ carx <- function(y,...) UseMethod("carx")
 #' @export
 #' @examples
 #' trueX = c(0.2,0.4)
-#' nAR = 2
+#' p = 2
 #' trueAR = c(-0.28,0.25)
 #' trueSigma = 0.60
 #' lcl = -1
 #' ucl = 1
-#' dat = simulateCarx(100, trueAR, trueX, trueSigma, lcl, ucl, seed=0)
-#' model0 <- carx(dat$y, dat$x,censorIndicator=dat$censorIndicator,
-#'               lowerCensorLimit = dat$lowerCensorLimit,
-#'               upperCensorLimit = dat$upperCensorLimit,
-#'               nAR = nAR,
-#'               getCI = FALSE)
-#' \dontrun{model1 <- carx(dat$y, dat$x,censorIndicator=dat$censorIndicator,
-#'               lowerCensorLimit = dat$lowerCensorLimit,
-#'               upperCensorLimit = dat$upperCensorLimit,
-#' 		           nAR = nAR,
-#' 		           getCI = TRUE,
+#' dat = carx.sim(100, trueAR, trueX, trueSigma, lcl, ucl, seed=0)
+#' model0 <- carx(dat$y, dat$x,ci=dat$ci,
+#'               lcl = dat$lcl,
+#'               ucl = dat$ucl,
+#'               p = p,
+#'               CI.compute = FALSE)
+#' \dontrun{model1 <- carx(dat$y, dat$x,ci=dat$ci,
+#'               lcl = dat$lcl,
+#'               ucl = dat$ucl,
+#' 		           p = p,
+#' 		           CI.compute = TRUE,
 #'               ) }
 
-
-carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,nAR,
-			 prmtrX=NULL,prmtrAR=NULL,sigmaEps=NULL,
-			 tol=1e-4,max.iter=500,getCI=TRUE,alpha=0.95,nBootstrapSample=1000,
-			 skipIndex=NULL,verbose=FALSE,...)
+carx.default <- function(y,x,ci,lcl=NULL,ucl=NULL,
+       p=1,prmtrX=NULL,prmtrAR=NULL,sigmaEps=NULL,
+			 tol=1e-4,max.iter=500,CI.compute=TRUE,CI.level=0.95,b=1000,
+			 verbose=FALSE,...)
 {
 	verbose <- verbose || options()$verbose
 	nObs <- length(y)
 
 	#standardize censoreIndicator
-	censorIndicator[ censorIndicator>0 ] <- 1
-	censorIndicator[ censorIndicator<0 ] <- -1
-	if( all(censorIndicator == 0) )
-		noCensor = TRUE
-	else
-		noCensor = FALSE
+	ci[ ci>0 ] <- 1; ci[ ci<0 ] <- -1
+	noCensor  <- all(ci == 0)
 
-	if(is.null(lowerCensorLimit)) # no lower censoring
+	if(is.null(lcl)) # no lower censoring
 	{
-		if(any(censorIndicator<0))
-			stop("Error in data: lowerCensorLimit is null but there exist left-censored data.")
+		if(any(ci<0))
+			stop("Error in data: lcl is null but there exist left-censored data.")
 		else
-			lowerCensorLimit = rep(-Inf,nObs)
+			lcl = rep(-Inf,nObs)
 	} else{
-		if(length(lowerCensorLimit) == 1)
+		if(length(lcl) == 1)
 		{
-			if(!is.nan(lowerCensorLimit))
-				lowerCensorLimit <- rep(lowerCensorLimit,nObs)
+			if(!is.nan(lcl))
+				lcl <- rep(lcl,nObs)
 			else
 			{
-				warning("lowerCensorLimit is NaN, I will set it to be -Inf.")
-				lowerCensorLimit <- rep(-Inf,nObs)
+				warning("lcl is NaN, I will set it to be -Inf.")
+				lcl <- rep(-Inf,nObs)
 			}
 		}
 		else #length > 1
 		{
-			if(length(lowerCensorLimit) != nObs)
+			if(length(lcl) != nObs)
 				stop("Error: The dimesion of lower censor limit doesn't match that of y.")
 		}
 	}
 
-	if(is.null(upperCensorLimit)) #no upper censoring
+	if(is.null(ucl)) #no upper censoring
 	{
-		if(any(censorIndicator>0)) #check
-			stop("Error in data: upperCensorLimit is null but there exist right-censored data.")
+		if(any(ci>0)) #check
+			stop("Error in data: ucl is null but there exist right-censored data.")
 		else
-			upperCensorLimit = rep(Inf,nObs)
+			ucl = rep(Inf,nObs)
 	} else{
-		if(length(upperCensorLimit) == 1)
+		if(length(ucl) == 1)
 		{
-			if(!is.nan(upperCensorLimit))
-				upperCensorLimit <- rep(upperCensorLimit,nObs)
+			if(!is.nan(ucl))
+				ucl <- rep(ucl,nObs)
 			else
 			{
-				warning("upperCensorLimit is NaN, I will set it to be Inf.")
-				upperCensorLimit <- rep(Inf,nObs)
+				warning("ucl is NaN, I will set it to be Inf.")
+				ucl <- rep(Inf,nObs)
 			}
 		}
 		else
 		{
-			if(length(upperCensorLimit) != nObs)
+			if(length(ucl) != nObs)
 				stop("Error: The dimesion of upper censor limit doesn't match that of y.")
 		}
 	}
-	if(any(lowerCensorLimit >= upperCensorLimit))
-		stop("Error in censor limit: some lower censor limits are bigger than upper censor limits.")
-
-	if(!is.null(x))
+	
+  if(!is.null(x))
 	{
 		if(!is.matrix(x)) # x may be a vector
 			x <- as.matrix(x)
@@ -150,28 +143,37 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		xIsOne <- TRUE
 	}
 
-	if(is.null(skipIndex))
-	{
-		skipIndex <- seq(1,nAR)
-		if(verbose)
-		{
-			message("Skip index is constructed as ")
-			message(paste(skipIndex,sep=','))
-		}
-	}
+  #check for finite rows in data and construct skipIndex
+  finiteRows <- is.finite(y) & (apply(externalVariable, 1, function(x){all(is.finite(x))}))
+  skipIndex <- rep(0,length(y))
+  skipIndex[1:p] <- 1
+  for(i in 1:length(y))
+  {
+    if(!finiteRows[i])
+      skipIndex[i:(i+p)] <- 1
+  }
+  skipIndex <- which(skipIndex > 0)
+  if(verbose)
+  {
+    message("Skip index is constructed as ")
+    message(paste(skipIndex,sep=', '))
+  }
 	nSkip <- length(skipIndex)
 
+	if(any(lcl[-skipIndex] >= ucl[-skipIndex]))
+		stop("Error in censor limit: some lower censor limits are bigger than upper censor limits.")
+  
 	ret = list(y = y,
 		   x = externalVariable,
 		   xIsOne = xIsOne,
-		   censorIndicator = censorIndicator,
-		   lowerCensorLimit = lowerCensorLimit,
-		   upperCensorLimit = upperCensorLimit,
-       getCI = getCI,
+		   ci = ci,
+		   lcl = lcl,
+		   ucl = ucl,
+       CI.compute = CI.compute,
        tol = tol,
        max.iter = max.iter,
-       alpha = alpha,
-       nBootstrapSample = nBootstrapSample,
+       CI.level = CI.level,
+       b = b,
 		   skipIndex = skipIndex,
        verbose = verbose
 		   )
@@ -182,7 +184,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	if(is.null(prmtrX) || is.null(prmtrAR) || is.null(sigmaEps) )
 	{
 		prmtrX <- numeric(nX)
-		prmtrAR <- numeric(nAR)
+		prmtrAR <- numeric(p)
 		sigmaEps <- numeric(1)
 		needInit <- TRUE
 	}
@@ -191,13 +193,13 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 
 	#special to store estimated values
 	prmtrXEstd <- numeric(nX)
-	prmtrAREstd <- numeric(nAR)
+	prmtrAREstd <- numeric(p)
 	sigmaEpsEstd <- numeric(1)
 
 	trend <- numeric(nObs)
-	covEta <- matrix(nrow=nAR+1, ncol = nAR+1)
-	wkMean <- matrix(nrow=nObs, ncol = nAR+1)
-	wkCov <- array(0, dim=c(nObs,nAR+1,nAR+1))
+	covEta <- matrix(nrow=p+1, ncol = p+1)
+	wkMean <- matrix(nrow=nObs, ncol = p+1)
+	wkCov <- array(0, dim=c(nObs,p+1,p+1))
 	res <- numeric(nObs)
 
 
@@ -205,20 +207,20 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	resetWK <- function()
 	{
 		trend <<- numeric(nObs)
-		covEta <<- matrix(nrow=nAR+1, ncol = nAR+1)
-		wkMean <<- matrix(nrow=nObs, ncol = nAR+1)
-		wkCov <<- array(0, dim=c(nObs,nAR+1,nAR+1))
+		covEta <<- matrix(nrow=p+1, ncol = p+1)
+		wkMean <<- matrix(nrow=nObs, ncol = p+1)
+		wkCov <<- array(0, dim=c(nObs,p+1,p+1))
 		res <<- numeric(nObs)
     pVal <<- numeric(getNPrmtr())
 
 		#initialize wkMean
 		for(idx in seq(1,nObs)[-skipIndex])
-			wkMean[idx,] <<- y[idx:(idx-nAR)]
+			wkMean[idx,] <<- y[idx:(idx-p)]
 	}
 	#-------------------------------
 
 	getNPrmtr <- function(){
-		return (nX + nAR +  1)
+		return (nX + p +  1)
 	}
 
 	getPrmtr <- function(){
@@ -227,7 +229,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	}
 
 	getCensorRate <- function(){
-		return(sum(abs(censorIndicator))*1.0/nObs)
+		return(sum(abs(ci))*1.0/nObs)
 	}
 
 
@@ -270,20 +272,20 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		updateTrend()
 		for(idx in seq(1,nObs)[-skipIndex])
 		{
-			tmpCensorIndicator <- censorIndicator[idx:(idx-nAR)]
+			tmpCensorIndicator <- ci[idx:(idx-p)]
 			nCensored <- sum(abs(tmpCensorIndicator))
 			if(nCensored>0)
 			{# at least one is censored
-				if( nCensored < (nAR+1) )
+				if( nCensored < (p+1) )
 				{
 					conditionalIndex <- which(tmpCensorIndicator==0) #indices for observed data
-					tmpY <- y[idx:(idx-nAR)][conditionalIndex]
-					tmpM <- trend[idx:(idx-nAR)]
+					tmpY <- y[idx:(idx-p)][conditionalIndex]
+					tmpM <- trend[idx:(idx-p)]
 					cdist <- conditionalDistMvnorm(tmpY,conditionalIndex,tmpM,covEta)
 					tmpMean <- cdist$'mean'
 					tmpVar <- cdist$'var'
 				}else{
-					tmpMean <- trend[idx:(idx-nAR)]
+					tmpMean <- trend[idx:(idx-p)]
 					tmpVar <- covEta
 				}
 				tmpLower <- rep(-Inf,length = nCensored)
@@ -291,9 +293,9 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 				censored <- tmpCensorIndicator[tmpCensorIndicator!=0]
 
 				# lower limit is upper censor limit
-				tmpLower[censored>0] <- upperCensorLimit[idx:(idx-nAR)][tmpCensorIndicator>0]
+				tmpLower[censored>0] <- ucl[idx:(idx-p)][tmpCensorIndicator>0]
 				# upper limit is lower censor limit
-				tmpUpper[censored<0] <- lowerCensorLimit[idx:(idx-nAR)][tmpCensorIndicator<0]
+				tmpUpper[censored<0] <- lcl[idx:(idx-p)][tmpCensorIndicator<0]
 				#if(abs(det(tmpVar)) < 0.001) warning("covariance matrix is nearly singluar.")
 				ret <- tmvtnorm::mtmvnorm(tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
 				wkMean[idx,tmpCensorIndicator!=0] <<- ret$'tmean'
@@ -310,9 +312,9 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		{
 			for(idx in seq(1,nObs)[-skipIndex])
 			{
-				tmpCensorIndicator <- censorIndicator[idx:(idx-nAR)]
-				wkMean[idx,tmpCensorIndicator>0] <<- upperCensorLimit[idx:(idx-nAR)][tmpCensorIndicator>0]
-				wkMean[idx,tmpCensorIndicator<0] <<- lowerCensorLimit[idx:(idx-nAR)][tmpCensorIndicator<0]
+				tmpCensorIndicator <- ci[idx:(idx-p)]
+				wkMean[idx,tmpCensorIndicator>0] <<- ucl[idx:(idx-p)][tmpCensorIndicator>0]
+				wkMean[idx,tmpCensorIndicator<0] <<- lcl[idx:(idx-p)][tmpCensorIndicator<0]
 				wkCov[idx,,] <<- 0
 			}
 		}
@@ -321,11 +323,11 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 
 	updatePrmtrAR <- function(){
 		wkMean2 <- wkMean
-		for(i in 1:(nAR+1)){
-			wkMean2[(nAR+1):nObs,i] <- wkMean2[(nAR+1):nObs,i] - trend[(nAR+2-i):(nObs+1-i)]
+		for(i in 1:(p+1)){
+			wkMean2[(p+1):nObs,i] <- wkMean2[(p+1):nObs,i] - trend[(p+2-i):(nObs+1-i)]
 		}
-		mat <- matrix(0,nAR,nAR)
-		vec <- numeric(nAR)
+		mat <- matrix(0,p,p)
+		vec <- numeric(p)
 		for(idx in seq(1,nObs)[-skipIndex]){
 			vec <- vec + wkMean2[idx,1]*wkMean2[idx,-1] + wkCov[idx,-1,1]
 			mat <- mat + outer(wkMean2[idx,-1],wkMean2[idx,-1]) + wkCov[idx,-1,-1]
@@ -349,7 +351,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 
 	updatePrmtrEV <- function()
 	{
-		if(nAR > 1){
+		if(p > 1){
 			tmpY <- wkMean[,1] - wkMean[,-1]%*%prmtrAR
 		}
 		else{
@@ -360,11 +362,11 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		tmpX <- matrix(0,nObs-nSkip,nX)
 		index <- seq(1,nObs)[-skipIndex]
 		for(idx in 1:(nObs-nSkip)){
-			if (nAR >1){
-				tmpX[idx,] <- externalVariable[(index[idx]),] - prmtrAR %*% externalVariable[(index[idx]-1):(index[idx]-nAR),]
+			if (p >1){
+				tmpX[idx,] <- externalVariable[(index[idx]),] - prmtrAR %*% externalVariable[(index[idx]-1):(index[idx]-p),]
 			}
 			else{
-				tmpX[idx,] <- externalVariable[(index[idx]),] - prmtrAR * externalVariable[(index[idx]-1):(index[idx]-nAR),]
+				tmpX[idx,] <- externalVariable[(index[idx]),] - prmtrAR * externalVariable[(index[idx]-1):(index[idx]-p),]
 			}
 		}
 		ret <- solve(t(tmpX) %*% tmpX, t(tmpX)%*%tmpY )
@@ -375,7 +377,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	updateSigmaEps <- function(){
 		idx <- seq(1,nObs)[-skipIndex]
 		vec <- wkMean[idx,1] - trend[idx]
-		for(i in 1:nAR){
+		for(i in 1:p){
 			vec <- vec - prmtrAR[i]*(wkMean[idx,i+1] - trend[(idx-i)])
 		}
 		ret <- sum(vec^2)
@@ -414,10 +416,10 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		{
 			eStep()
 			delta <- mStep()
-			if(verbose) message(sprintf("Iter:%i, delta: %f, prmtr: %s", nIter, delta, toString(getPrmtr()) ) )
+			if(verbose) message(sprintf("Iter:%i, delta: %f, prmtr: %s", nIter, delta, toString(round(getPrmtr(),digits = 4)) ) )
 			nIter <- nIter + 1
 		}
-		if(verbose) message(sprintf("Iter:%i, delta: %f, prmtr: %s, \nParameter estimated\n", nIter-1, delta, toString(getPrmtr()) ) )
+		if(verbose) message(sprintf("Iter:%i, delta: %f, prmtr: %s \nParameter estimated\n", nIter-1, delta, toString(round(getPrmtr(),digits=4)) ) )
 	}
 
 	initPrmtr <- function(tol,max.iter)
@@ -427,7 +429,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		nIter <- 1
 
 		prmtrX <<- numeric(nX)
-		prmtrAR <<- numeric(nAR)
+		prmtrAR <<- numeric(p)
 		sigmaEps <<- 1
 
 		eStepNaive()
@@ -435,10 +437,10 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 		{
 			updateTrend() # needed since it is done to update the trend which is done in the eStep for our method
 			delta <- mStep()
-			if(verbose) message(sprintf("Iter:%i, delta: %f, prmtr: %s", nIter, delta, toString(getPrmtr()) ) )
+			if(verbose) message(sprintf("Iter:%i, delta: %f, prmtr: %s", nIter, delta, toString(round(getPrmtr(),digits=4) ) ))
 			nIter <- nIter + 1
 		}
-		if(verbose) message(sprintf("Iter:%i, delta: %f, prmtr: %s \nParameter initialized\n", nIter-1, delta, toString(getPrmtr()) ) )
+		if(verbose) message(sprintf("Iter:%i, delta: %f, prmtr: %s \nParameter initialized\n", nIter-1, delta, toString(round(getPrmtr(),digits=4) ) ))
 	}
 
 	exptdLogLik <- function()
@@ -455,25 +457,24 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 
 		eta <- numeric(nObs)
 		eta[skipIndex] <- eps[skipIndex]
-		#y[1:nAR] <<- eps[1:nAR] # this step is not necessary
 		for(i in seq(1,nObs)[-skipIndex]){
-			eta[i] <- eta[(i-1):(i-nAR)] %*% prmtrAR + eps[i]
+			eta[i] <- eta[(i-1):(i-p)] %*% prmtrAR + eps[i]
 			y[i] <<- trend[i] + eta[i]
 		}
-		censorIndicator <<- rep(0,nObs)
-		censorIndicator[y<lowerCensorLimit] <<- -1
-		censorIndicator[y>upperCensorLimit] <<- 1
-		if(verbose) message(paste0("\ncensor rate: ", sum(abs(censorIndicator))/nObs))
+		ci <<- rep(0,nObs)
+		ci[y<lcl] <<- -1
+		ci[y>ucl] <<- 1
+		if(verbose) message(paste0("\ncensor rate: ", sum(abs(ci))/nObs))
 	}
 
-	bootstrapCI <- function(alpha,nBootstrapSample)
+	bootstrapCI <- function(CI.level,b)
 	{
 		#message(sprintf('Bootstraping CI'))
 		yOriginal <- y #copy y as it will be overwritten
-		tmpResult <- matrix(0,nBootstrapSample,getNPrmtr())
-		#pb <- txtProgressBar(1,nBootstrapSample,style=3)
-		for(i in 1:nBootstrapSample){
-			#message(sprintf('Bootstraping CI %i/%i',i,nBootstrapSample))
+		tmpResult <- matrix(0,b,getNPrmtr())
+		#pb <- txtProgressBar(1,b,style=3)
+		for(i in 1:b){
+			#message(sprintf('Bootstraping CI %i/%i',i,b))
 			#setTxtProgressBar(pb,i)
 			setInitPrmtrForBootstrap()
 			bootstrapSample()
@@ -482,9 +483,9 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 			tmpResult[i,] <- getPrmtr()
 		}
 		#close(pb)
-		qv <- c((1-alpha)/2,1-(1-alpha)/2)
+		qv <- c((1-CI.level)/2,1-(1-CI.level)/2)
 		for(j in 1:getNPrmtr()){
-			ci[j,] <<- quantile(tmpResult[,j],qv)
+			CI[j,] <<- quantile(tmpResult[,j],qv)
       pVal[j] <- mean(tmpResult[,j]>getEstdPrmtr()[j])
 
 		}
@@ -506,7 +507,7 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	xnames <- colnames(x)
 	if(is.null(xnames))
 		xnames <- paste0('X',1:dim(x)[2])
-	names(coeff) <- c(xnames,paste0('AR',1:nAR))
+	names(coeff) <- c(xnames,paste0('AR',1:p))
 
 	ret$coefficients = coeff
 	ret$prmtrX = prmtrXEstd
@@ -521,22 +522,22 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 	names(ret$prmtrEstd) <- rnames
 	ret$nObs = nObs
 	ret$logLik = exptdLogLik()
-	ret$nAR = nAR
+	ret$p = p
 	ret$nX = nX
 	ret$npar = getNPrmtr()
 	ret$aic = 2*(-ret$logLik + ret$npar)
 	ret$call = match.call()
 
-	if(getCI){
+	if(CI.compute){
 		#rnames <- c(names(coeff),"sigma")
-		ci <- matrix(nrow=getNPrmtr(),ncol=2)
+		CI <- matrix(nrow=getNPrmtr(),ncol=2)
 		covMat <- matrix(nrow=getNPrmtr(),ncol=getNPrmtr())
-		bootstrapCI(alpha,nBootstrapSample)
-		rownames(ci) <- rnames
-		colnames(ci) <- c(sprintf("%4.2f%%",100*(1-alpha)/2), sprintf("%4.2f%%",100*(1+alpha)/2))
+		bootstrapCI(CI.level,b)
+		rownames(CI) <- rnames
+		colnames(CI) <- c(sprintf("%4.2f%%",100*(1-CI.level)/2), sprintf("%4.2f%%",100*(1+CI.level)/2))
 		rownames(covMat) <- rnames
 		colnames(covMat) <- rnames
-		ret$CI <- ci
+		ret$CI <- CI
 		ret$vcov <- covMat
     ret$pVal <- pVal
 	}else{
@@ -555,13 +556,49 @@ carx.default <- function(y,x,censorIndicator,lowerCensorLimit,upperCensorLimit,n
 #' @export
 carx.formula <- function(formula, data=list(),...)
 {
-	mf <- model.frame(formula=formula,data=data)
-	x <- model.matrix(attr(mf,"terms"),data=mf)
+  if('cenTS' %in% class(data))
+  {
+    data2 <- data.frame(coredata(data))
+    #x <- xreg(data)
+    #data2 <- data.frame(data2,x)
+  }
+  else
+    data2 <- data
+    
+	mf <- model.frame(formula=formula,data=data2,na.action=NULL)
 	y <- model.response(mf)
+	x <- model.matrix(attr(mf,"terms"),data=mf)
+  vars <- list(...)
 
-	est <- carx.default(y,x,...)
+  nvars <- names(vars)
+
+  if( "lcl" %in% names(data2) ) 
+    vars$lcl <- data2$lcl
+
+  if( "ucl" %in% names(data2) ) 
+    vars$ucl <- data2$ucl
+
+  #construct ci
+  #ci <- rep(0,length(y))
+  #idx <- is.finite(y) & is.finite(data2$lcl)
+  #idx2 <- y[idx] <= data2$lcl[idx]
+  #ci[idx][idx2] <- -1
+  
+  #idx <- is.finite(y) & is.finite(data2$ucl)
+  #idx2 <- y[idx] >= data$ucl[idx]
+  #ci[idx][idx2] <- 1
+  if( "ucl" %in% names(data2) )
+    vars$ci <- data2$ci
+
+  #}
+  #}
+
+  toPass <- c(list(y=y,x=x),vars)
+	#est <- carx.default(y,x,...)
+  est <- do.call(carx.default,toPass)
 	est$call <- match.call()
 	est$formula <- formula
+  est$data <- data
 	est
 }
 
@@ -605,38 +642,35 @@ print.carx <- function(x,...)
 	cat("\nCoefficients:\n")
 	print(x$coefficients)
 
-	cat("\nSigma of errors of AR process:\n")
+	cat("\nResidual (innovation) standard deviation:\n")
 	print(x$sigma)
-	cat("\nVariance of errors of AR process:\n")
-	print(x$sigma^2)
 
-	cat("\nCensor rate:\n")
+	cat("\nCensoring rate:\n")
 	print(x$censorRate)
-	cat("\n#obs:\n")
+	cat("\nSample size:\n")
 	print(x$nObs)
 
-	cat("\nnpar:\n")
+	cat("\nNumber of parameters:\n")
 	print(x$npar)
 
-	cat("\nlogLik:\n")
+	cat("\nQuasi-log-likelihood:\n")
 	print(x$logLik)
 
 	cat("\nAIC:\n")
 	print(x$aic)
 
 
-	cat("\nprmtrInit:\n")
-	print(x$prmtrInit)
-	cat("\nprmtrEstd:\n")
-	print(x$prmtrEstd)
-	if(x$getCI){
-		cat("\nconfidence interval\n")
+	#cat("\nInitial estimates:\n")
+	#print(x$prmtrInit)
+	#cat("\nFinal estimates:\n")
+	#print(x$prmtrEstd)
+	if(x$CI.compute){
+		cat(paste0("\nConfidence interval:\n"))
 		print(x$CI)
-		cat("\nvariance-covariance matrix\n")
+		cat("\nVariance-covariance matrix:\n")
 		print(x$vcov)
-
+    cat(paste0("N.B.: Confidence intervals and variance-covariance matrix are based on ", x$b, " bootstrap samples.\n"))
 	}
-
 }
 
 #' summarize the fitted model on parameters, residuals and model fit
@@ -696,7 +730,7 @@ print.summary.carx <- function(x,...)
 	#print(x$coefficients)
   pval <- 'p.value' %in% colnames(x$coefficients)
   printCoefmat(x$coefficients, P.value = pval, has.Pvalue = pval)
- cat(sprintf("Note: confidence intervals are based on %i bootstraps.  P.values are one-sided.\n", x$nBootstrapSample))
+ cat(sprintf("Note: confidence intervals are based on %i bootstraps.  P.values are one-sided.\n", x$b))
 
 	cat("\nAIC:\n")
 	print(x$aic)

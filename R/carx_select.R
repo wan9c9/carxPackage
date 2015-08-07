@@ -11,13 +11,13 @@
 #' \item{\code{detect.outlier}}{the argument \code{detect.outlier}}
 #' \item{\code{aicMat}}{ the matrix of AIC where rows correspond to the model formulas and columns correspond to AR order}
 #' }
-carx.select <- function(formulas, max.ar, data=list(), detect.outlier=FALSE)
+carx.select <- function(formulas, max.ar, data=list(), detect.outlier=F)
 {
   nModel <- length(formulas)
   aics <- matrix(nrow=nModel,ncol=max.ar)
+  rownames(aics) <- names(formulas)
   saic0 <- NULL
   m0 <- NULL
-
  
   i  <- 0
   for(f  in formulas)
@@ -25,8 +25,8 @@ carx.select <- function(formulas, max.ar, data=list(), detect.outlier=FALSE)
     i  <- i + 1
     for( p in 1:max.ar)
     {
-      print(f)
-      print(p)
+      #print(f)
+      #print(p)
       tmp <- carx(f,data=data, p=p, CI.compute=FALSE)
       if(detect.outlier)
         tmp <- outlier(tmp)$updatedModel

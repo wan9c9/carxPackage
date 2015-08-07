@@ -6,11 +6,11 @@
 #' @param prmtrAR the AR parameter.
 #' @param prmtrX the parameter for X.
 #' @param sigmaEps the standard deviation for the white noises of the AR process.
-#' @param lowerCensorLimit the lower censor limit.
-#' @param upperCensorLimit the upper censor limit.
+#' @param lcl the lower censor limit.
+#' @param ucl the upper censor limit.
 #' @param x optional matrix for X.
 #' @param seed optional to set the seed of random number generator used by \code{R}.
-#' @return a list of simulated \code{y}, \code{x}, \code{censorIndicator}, \code{lowerCensorLimit} and \code{upperCensorLimit}.
+#' @return a list of simulated \code{y}, \code{x}, \code{ci}, \code{lcl} and \code{ucl}.
 #' @export
 #' @examples
 #' nObs = 100
@@ -19,12 +19,13 @@
 #' trueSigma = 0.60
 #' lcl = -1
 #' ucl = 1
-#' dat = simulateCarx(100, trueAR, trueX, trueSigma, lcl, ucl, seed=0)
+#' dat = carx.sim(100, trueAR, trueX, trueSigma, lcl, ucl, seed=0)
+#' cts = carx.sim.cenTS(100, trueAR, trueX, trueSigma, lcl, ucl, seed=0)
 
-
-simulateCarx <- function(nObs, prmtrAR, prmtrX, sigmaEps, lowerCensorLimit, upperCensorLimit, x = NULL, seed=NULL)
+#simulate <- function(nObs, prmtrAR, prmtrX, sigmaEps, lcl, ucl, x = NULL, seed=NULL) UseMethod("simulate")
+carx.sim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL)
 {
-	nAR <- length(prmtrAR)
+	p <- length(prmtrAR)
 	nX <- length(prmtrX)
 
 	if(!is.null(seed))
@@ -34,32 +35,50 @@ simulateCarx <- function(nObs, prmtrAR, prmtrX, sigmaEps, lowerCensorLimit, uppe
 	if(is.null(x))
   {
 		x <- matrix(rnorm(nObs*nX), nrow= nObs, ncol = nX)
-    #colnames(x) <- paste0("X",seq(1,length(nX)))
   }
+
+  if(is.null(colnames(x))) 
+    colnames(x) <- paste0("X",seq(1,nX))
 
 	trend <- x%*%prmtrX
 
 	eta <- numeric(nObs)
 	y <- numeric(nObs)
-	eta[1:nAR] <- eps[1:nAR]
+	eta[1:p] <- eps[1:p]
 
-	y[1:nAR] <- eps[1:nAR]
-	for(i in (nAR+1):nObs){
-		eta[i] <- eta[(i-1):(i-nAR)] %*% prmtrAR + eps[i]
+	y[1:p] <- eps[1:p]
+	for(i in (p+1):nObs){
+		eta[i] <- eta[(i-1):(i-p)] %*% prmtrAR + eps[i]
 		y[i] <- trend[i] + eta[i]
 	}
-	censorIndicator <- rep(0,nObs)
-	censorIndicator[y<lowerCensorLimit] <- -1
-	censorIndicator[y>upperCensorLimit] <- 1
+	ci <- rep(0,nObs)
+	ci[y<lcl] <- -1
+	ci[y>ucl] <- 1
 
-	if(options()$verbose) message(paste0("simulated series: censor rate: ", sum(abs(censorIndicator))/nObs))
+  if(options()$verbose) message(paste0("simulated series: censor rate: ", sum(abs(ci))/nObs))
 	ret <- list(y = y,
 		    x = x,
-		    censorIndicator=censorIndicator,
-		    lowerCensorLimit=lowerCensorLimit,
-		    upperCensorLimit=upperCensorLimit
+		    ci=ci,
+		    lcl=lcl,
+		    ucl=ucl
 		    )
 	ret
 }
 
 
+
+carx.sim.cenTS <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL, end.date=Sys.Date())
+{
+  ret <- carx.sim(nObs,prmtrAR, prmtrX, sigmaEps, lcl, ucl, x, seed)
+  
+  listx <- lapply(seq_len(ncol(ret$x)), function(i) ret$x[,i])
+  names(listx) <- colnames(ret$x)
+  
+  listx$order.by <- end.date+seq(-nObs,-1,by=1)
+  listx$value <- ret$y
+  listx$lcl <- ret$lcl
+  listx$ucl <- ret$ucl
+  
+  val <- do.call(cenTS,listx)
+  val 
+}

@@ -68,8 +68,8 @@ simulation.carx <-function(trueX=c(0.2,0.4),
 	simEst <-function(iRep)
 	{
 		message(sprintf("Rep:%i",iRep))
-		dat <- simulateCarx(nObs, trueAR, trueX, trueSigma, lowercl, uppercl, seed=37513*iRep)
-		rslt <- carx.default(dat$y,dat$x,dat$censorIndicator,dat$lowerCensorLimit,dat$upperCensorLimit, nAR, getCI=fullEstimation,skipIndex=seq(1,nAR))
+		dat <- carx.sim(nObs, trueAR, trueX, trueSigma, lowercl, uppercl, seed=37513*iRep)
+		rslt <- carx.default(dat$y,dat$x,dat$censorIndicator,dat$lowerCensorLimit,dat$upperCensorLimit, nAR, CI.compute=fullEstimation)
 		ret <- c(iRep,rslt$censorRate,rslt$prmtrInit,rslt$prmtrEstd)
 		if(fullEstimation)
 		{

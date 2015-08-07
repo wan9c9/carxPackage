@@ -25,12 +25,12 @@ plot.carx <- function(x,FUN=identity, xAxisVar=NULL, xlab="Index", ylab="Respons
 	yh <- sapply(fitted(object), FUN)
 	y <- sapply(object$y,  FUN)
 
-	validLcl <- ifelse(any(is.finite(object$lowerCensorLimit)), TRUE, FALSE)
-	validUcl <- ifelse(any(is.finite(object$upperCensorLimit)), TRUE, FALSE)
+	validLcl <- ifelse(any(is.finite(object$lcl)), TRUE, FALSE)
+	validUcl <- ifelse(any(is.finite(object$ucl)), TRUE, FALSE)
   
 	if(validLcl)
 	{
-		lcl <- sapply(object$lowerCensorLimit, FUN)
+		lcl <- sapply(object$lcl, FUN)
 		lgd <- c(lgd,"Lower censor limit")
 		plty <- c(plty,3)
 		pcol <- c(pcol,'red')
@@ -40,7 +40,7 @@ plot.carx <- function(x,FUN=identity, xAxisVar=NULL, xlab="Index", ylab="Respons
 	
 	if(validUcl)
 	{
-	  ucl <- sapply(object$upperCensorLimit, FUN)
+	  ucl <- sapply(object$ucl, FUN)
 		lgd <- c(lgd,"Upper censor limit")
 		plty <- c(plty,5)
 		pcol <- c(pcol,'red')
@@ -50,10 +50,10 @@ plot.carx <- function(x,FUN=identity, xAxisVar=NULL, xlab="Index", ylab="Respons
 
 	ylim <- range(c(y,yh,lcl,ucl),na.rm=TRUE,finite=T)
 
-	if( any(object$censorIndicator>0) )
-		y[object$censorIndicator>0] <- ucl[object$censorIndicator>0]
-	if( any(object$censorIndicator<0) )
-		y[object$censorIndicator<0] <- lcl[object$censorIndicator<0]
+	if( any(object$ci>0) )
+		y[object$ci>0] <- ucl[object$ci>0]
+	if( any(object$ci<0) )
+		y[object$ci<0] <- lcl[object$ci<0]
 
 	
 	#plot(xAxisVar, y, type="n", xaxt="n", yaxt="n")
@@ -67,12 +67,12 @@ plot.carx <- function(x,FUN=identity, xAxisVar=NULL, xlab="Index", ylab="Respons
 	if(validLcl)
 	{
 		lines(xAxisVar, lcl, lty=3, col="red")
-		points(xAxisVar[object$censorIndicator<0],lcl[object$censorIndicator<0],pch=2)
+		points(xAxisVar[object$ci<0],lcl[object$ci<0],pch=2)
 	}
 	if(validUcl)
 	{
 		lines(xAxisVar, ucl, lty=5, col="red")
-		points(xAxisVar[object$censorIndicator>0], ucl[object$censorIndicator>0],pch=6)
+		points(xAxisVar[object$ci>0], ucl[object$ci>0],pch=6)
 	}
 
 	legend("topright",legend=lgd,lty=plty,col=pcol)
@@ -124,3 +124,38 @@ plotResAcf.carx <- function(object,...)
 	acf(residuals(object),na.action=na.pass,...)
 }
 
+
+tsdiag <- function(object,...) UseMethod("tsdiag")
+
+tsdiag.carx <- function(object,gof.lag,tol=0.1,col="red",omit.initial=TRUE,...)
+{
+  opar = par(mfrow = c(3, 1), mar = c(4, 4, 4, 3) + 0.1, oma = c(1, 0, 2, 0))
+  n = object$nObs
+  if (missing(gof.lag)) 
+      lag.max = 10 * log10(n)
+  else 
+    lag.max = gof.lag
+
+  residuals = residuals(object,type="raw")
+  if (omit.initial) 
+      residuals = window(residuals, start = time(residuals)[object$p + 1])
+  std.res = residuals/object$sigma
+  n = length(std.res)
+  h1 = qnorm(0.025/n)
+  plot(std.res, ylab = "Standardized Residuals", type = "p", ...)
+  abline(h = h1, lty = 2, col = col)
+  abline(h = -h1, lty = 2, col = col)
+  abline(h = 0)
+  acf(as.numeric(residuals), lag.max = lag.max, ylab = "ACF of Residuals", 
+      ci.col = col, main = "", ...)
+  lbv = rep(NA, lag.max)
+  k = object$p+1
+  for (i in k:lag.max) {
+      lbv[i] = Box.test(std.res, lag = i, type="Ljung-Box",fitdf = object$p)$p.value
+  }
+  plot(y = lbv, x = 1:lag.max, ylim = c(0, 1), pch = 21, ylab = "P-values", 
+      xlab = "Number of lags", ...)
+  abline(h = 0.05, lty = 2, col = col)
+  par(opar)
+  invisible()
+}

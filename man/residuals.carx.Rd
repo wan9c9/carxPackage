@@ -4,7 +4,7 @@
 \alias{residuals.carx}
 \title{compute the residuals of a fitted \code{carx} object}
 \usage{
-\method{residuals}{carx}(object, type = "pearson", ...)
+\method{residuals}{carx}(object, type = "pearson", seed = 1, ...)
 }
 \arguments{
 \item{object}{a fitted \code{carx} object.}

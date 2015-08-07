@@ -8,46 +8,47 @@
 #' @param ... not used.
 #' @return the simulated residuals.
 #' @export
-residuals.carx <- function(object,type="pearson",...)
+residuals.carx <- function(object,type="pearson",seed=1,...)
 {
+  set.seed(seed)
 	nObs <- object$nObs
-	nAR <- object$nAR
+	p <- object$p
 	y <- object$y
 
 	trend <- object$x%*%object$prmtrX
 	eta <- object$y - trend
-	for(idx in 1:nAR)
+	for(idx in 1:p)
 	{
-		if(object$censorIndicator[idx] > 0)
-			y[idx] = object$upperCensorLimit[idx]
-		else if(object$censorIndicator[idx] < 0 )
-				y[idx] = object$lowerCensorLimit[idx]
+		if(object$ci[idx] > 0)
+			y[idx] = object$ucl[idx]
+		else if(object$ci[idx] < 0 )
+				y[idx] = object$lcl[idx]
 	}
 
-	for(idx in (nAR+1):nObs)
+	for(idx in (p+1):nObs)
 	{
-		if(object$censorIndicator[idx] == 0)
+		if(object$ci[idx] == 0)
 		{
 			#message(sprintf("idx %i, not censored",idx))
 			next
 		}
 
-		if(all(object$censorIndicator[(idx-1):(idx-nAR)]==0))
+		if(all(object$ci[(idx-1):(idx-p)]==0))
     {
 		  #message(sprintf("idx %i, fast ",idx))
-			tmpMean <- trend[idx] + eta[(idx-1):(idx-nAR)]%*%object$prmtrAR
-			if(object$censorIndicator[idx] > 0)
-				y[idx] <- tmvtnorm::rtmvnorm(1, mean=c(tmpMean), sigma=c(object$sigma),lower=object$upperCensorLimit[idx],upper=Inf,algorithm="gibbs")
+			tmpMean <- trend[idx] + eta[(idx-1):(idx-p)]%*%object$prmtrAR
+			if(object$ci[idx] > 0)
+				y[idx] <- tmvtnorm::rtmvnorm(1, mean=c(tmpMean), sigma=c(object$sigma),lower=object$ucl[idx],upper=Inf,algorithm="gibbs")
 			else
-				y[idx] <- tmvtnorm::rtmvnorm(1, mean=c(tmpMean), sigma=c(object$sigma),lower=-Inf, upper = object$lowerCensorLimit[idx],algorithm="gibbs")
+				y[idx] <- tmvtnorm::rtmvnorm(1, mean=c(tmpMean), sigma=c(object$sigma),lower=-Inf, upper = object$lcl[idx],algorithm="gibbs")
 			next
 		}
 
 		#message(sprintf("idx %i, slow",idx))
 		iStart <- 1
-		for(i in (idx-nAR):1)
+		for(i in (idx-p):1)
 		{
-			if(all(object$censorIndicator[i:(i+nAR-1)]==0))
+			if(all(object$ci[i:(i+p-1)]==0))
 			{
 				iStart <- i
 				break
@@ -56,7 +57,7 @@ residuals.carx <- function(object,type="pearson",...)
 
 		nStart <- idx - iStart + 1
 		#message(sprintf("idx: %i, iStart: %i, nStart: %i",idx,iStart,nStart))
-		tmpCensorIndicator <- object$censorIndicator[idx:iStart] #reverse order
+		tmpCensorIndicator <- object$ci[idx:iStart] #reverse order
 		nCensored <- sum(tmpCensorIndicator!=0)
 		covEta <- computeCovAR(object$prmtrAR, object$sigma, nStart)
 		if( nCensored < nStart )
@@ -74,22 +75,18 @@ residuals.carx <- function(object,type="pearson",...)
 		tmpLower <- rep(-Inf,length = nCensored) #( y[idx], censored obs)
 		tmpUpper <- rep(Inf,length = nCensored)
 		censored <- tmpCensorIndicator[tmpCensorIndicator!=0]
-		tmpLower[censored>0] <- object$upperCensorLimit[idx:iStart][tmpCensorIndicator>0]
-		tmpUpper[censored<0] <- object$lowerCensorLimit[idx:iStart][tmpCensorIndicator<0]
+		tmpLower[censored>0] <- object$ucl[idx:iStart][tmpCensorIndicator>0]
+		tmpUpper[censored<0] <- object$lcl[idx:iStart][tmpCensorIndicator<0]
 		ysim <- tmvtnorm::rtmvnorm(1, mean=tmpMean, sigma=tmpVar, lower=tmpLower, upper=tmpUpper,algorithm="gibbs")
 		y[idx] <- ysim[1]
   }
-	#print(y)
-	#print(object)
-	#m1 <- arimax(y,order=c(object$nAR,0,0),xreg = data.frame(object$x),include.mean=FALSE,transform.pars=FALSE,init=c(object$prmtrAR,object$prmtrX),method="ML")
-	#print(m1)
-	m2 <- carx(y, object$x, rep(0,nObs), NULL, NULL, object$nAR, getCI=FALSE)
+	m2 <- carx(y, object$x, rep(0,nObs), NULL, NULL, object$p, CI.compute=FALSE)
 	#print(m2)
 	rsdl <- numeric(nObs)
 	eta <- y - object$x%*%m2$prmtrX
-	for(idx in (nAR+1):nObs)
+	for(idx in (p+1):nObs)
 	{
-		rsdl[idx] <- eta[idx] - eta[(idx-1):(idx-nAR)]%*%m2$prmtrAR
+		rsdl[idx] <- eta[idx] - eta[(idx-1):(idx-p)]%*%m2$prmtrAR
 	}
 	if(type=="raw")
 		return(rsdl)

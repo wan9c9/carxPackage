@@ -16,6 +16,5 @@ singleTestSelectAROrder <- function(iter)
 
 nRep <- 100
 orders <- numeric(nRep)
-for( r in nRep)
- orders[r]  <- singleTestSelectAROrder()
-
+orders <- parallel::mclapply(1:nRep, singleTestSelectAROrder,mc.cores=parallel::detectCores()-1)
+hist(unlist(orders))

@@ -4,25 +4,24 @@
 \alias{carx.default}
 \title{\code{carx.default} is the default method for CARX.}
 \usage{
-\method{carx}{default}(y, x, censorIndicator, lowerCensorLimit,
-  upperCensorLimit, nAR, prmtrX = NULL, prmtrAR = NULL, sigmaEps = NULL,
-  tol = 1e-04, max.iter = 500, getCI = TRUE, alpha = 0.95,
-  nBootstrapSample = 1000, skipIndex = NULL, verbose = FALSE, ...)
+\method{carx}{default}(y, x, ci, lcl, ucl, p = 1, prmtrX = NULL,
+  prmtrAR = NULL, sigmaEps = NULL, tol = 1e-04, max.iter = 500,
+  CI.compute = TRUE, CI.level = 0.95, b = 1000, verbose = FALSE, ...)
 }
 \arguments{
 \item{y}{a vector of possibly censored responses, only uncensored observation
-marked by zeros of \code{censorIndicator} are used.}
+marked by zeros of \code{ci} are used.}
 
 \item{x}{a matrix of covariates, or some object which can be coerced to matrix.}
 
-\item{censorIndicator}{a vector of -1,0,1's indicating that the corresponding y is
-left-censored, not censored, and right-censored resectively.}
+\item{ci}{a vector of -1,0,1's indicating that the corresponding y is
+left-censored, not censored, and right-censored respectively.}
 
-\item{lowerCensorLimit}{a vector of lower censor limits or a number assuming constant limit.}
+\item{lcl}{a vector of lower censoring limits, or a number assuming constant limit.}
 
-\item{upperCensorLimit}{a vector of upper censor limits or a number assuming constant limit.}
+\item{ucl}{a vector of upper censoring limits, or a number assuming constant limit.}
 
-\item{nAR}{the order of AR model for the regression errors.}
+\item{p}{the order of AR model for the regression errors, default = 1.}
 
 \item{prmtrX}{the initial value for the parameter of \code{x}, default = \code{NULL}.}
 
@@ -34,18 +33,18 @@ left-censored, not censored, and right-censored resectively.}
 
 \item{max.iter}{maximum number of iterations allowed when estimating parameters, default = 500.}
 
-\item{getCI}{bool value to indicate if the confidence interval for the
+\item{CI.compute}{bool value to indicate if the confidence interval for the
 parameter is to be constructed, default = \code{TRUE}.}
 
-\item{alpha}{numeric value in (0,1) to get the \code{alpha} confidence interval for the parameter, default = 0.95.}
+\item{CI.level}{numeric value in (0,1) to get the \code{CI.level} confidence interval for the parameter, default = 0.95.}
 
-\item{nBootstrapSample}{number of bootstrap samples when estimating confidence interval for the parameter, default = 1000.}
-
-\item{skipIndex}{a vector of indices indicating indices to be skipped, as some initial values are needed to calculate the conditional log-likelihood, also is the initial values to calculate the conditional log-likelihood, useful if there are multiple segment of series in the whole series.}
+\item{b}{number of bootstrap samples when estimating confidence interval for the parameter, default = 1000.}
 
 \item{verbose}{bool value indicates whether to print intermediate information, default = FALSE.}
 
 \item{...}{not used.}
+
+\item{skipIndex}{a vector of indices indicating indices to be skipped, as some initial values are needed to calculate the conditional log-likelihood, also is the initial values to calculate the conditional log-likelihood, useful if there are multiple segment of series in the whole series.}
 }
 \value{
 a CARX object of the estimated model.
@@ -55,22 +54,22 @@ a CARX object of the estimated model.
 }
 \examples{
 trueX = c(0.2,0.4)
-nAR = 2
+p = 2
 trueAR = c(-0.28,0.25)
 trueSigma = 0.60
 lcl = -1
 ucl = 1
-dat = simulateCarx(100, trueAR, trueX, trueSigma, lcl, ucl, seed=0)
-model0 <- carx(dat$y, dat$x,censorIndicator=dat$censorIndicator,
-              lowerCensorLimit = dat$lowerCensorLimit,
-              upperCensorLimit = dat$upperCensorLimit,
-              nAR = nAR,
-              getCI = FALSE)
-\dontrun{model1 <- carx(dat$y, dat$x,censorIndicator=dat$censorIndicator,
-              lowerCensorLimit = dat$lowerCensorLimit,
-              upperCensorLimit = dat$upperCensorLimit,
-		           nAR = nAR,
-		           getCI = TRUE,
+dat = carx.sim(100, trueAR, trueX, trueSigma, lcl, ucl, seed=0)
+model0 <- carx(dat$y, dat$x,ci=dat$ci,
+              lcl = dat$lcl,
+              ucl = dat$ucl,
+              p = p,
+              CI.compute = FALSE)
+\dontrun{model1 <- carx(dat$y, dat$x,ci=dat$ci,
+              lcl = dat$lcl,
+              ucl = dat$ucl,
+		           p = p,
+		           CI.compute = TRUE,
               ) }
 }
 
