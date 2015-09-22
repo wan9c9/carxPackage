@@ -4,22 +4,24 @@
 \alias{predict.carx}
 \title{Provide predictions with fitted \code{carx} object}
 \usage{
-\method{predict}{carx}(object, newdata = NULL, n.ahead = 1, level = 0.95,
-  nRep = 1000, ...)
+\method{predict}{carx}(object, newxreg = NULL, n.ahead = 1,
+  CI.level = 0.95, nRep = 1000, na.action = NULL, ...)
 }
 \arguments{
 \item{object}{A fitted \code{carx} object.}
 
-\item{newdata}{The new observations for the coverates \code{x}.
-If there is no covariates, the value can be assigned to be \code{NULL}.
-Otherwise, an matrix of new observations is required for give predictions.}
+\item{newxreg}{The new observations for the coverates \code{x}.
+If there is no covariate, the value can be assigned to be \code{NULL}.
+Otherwise, a matrix of new observations is required to compute predictions.}
 
-\item{n.ahead}{The number of steps ahead the user wants to predict, default = 1.}
+\item{n.ahead}{The number of steps ahead to predict, default = 1.}
 
-\item{level}{The level used to construct the Confidence interval, default = 0.95.}
+\item{CI.level}{The CI.level to construct the Confidence interval, default = 0.95.}
 
-\item{nRep}{The number of replications to be performed when censoring exists in the last \code{p}
+\item{nRep}{The number of replications to be performed in the bootstrap for prediction confidence intervals when censoring exists in the last \code{p}
 observations, default = 1000.}
+
+\item{na.action}{how should \code{model.frame} deal with \code{NA} values.}
 
 \item{...}{not used.}
 }
@@ -28,7 +30,6 @@ A list consisting of \code{fit}, \code{se.fit}, and \code{ci} representing the p
 standard errors of predictions, and confidence intervals respectively.
 }
 \description{
-\code{predict.carx} provides an method to predict the future values of an fitted
-\code{carx} object with given new observations in \code{x}.
+Predict the future values of an fitted \code{carx} object with given new observations in \code{x}.
 }
 

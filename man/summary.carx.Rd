@@ -2,7 +2,7 @@
 % Please edit documentation in R/carx_default.R
 \name{summary.carx}
 \alias{summary.carx}
-\title{summarize the fitted model on parameters, residuals and model fit}
+\title{Summarize the fitted \code{carx} object}
 \usage{
 \method{summary}{carx}(object, ...)
 }
@@ -15,6 +15,6 @@
 a summary.
 }
 \description{
-summarize the fitted model on parameters, residuals and model fit
+Summarize the fitted \code{carx} object
 }
 

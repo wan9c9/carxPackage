@@ -1,6 +1,6 @@
-#' \code{conditionalDistMvnorm} calculates the conditional mean & variance of a random vector following multivariate normal distribution.
+#' Calculate the conditional mean & variance of a random vector following multivariate normal distribution
 #'
-#' \code{conditionalDistMvnorm} calculates the conditional mean & variance of a sub-vector
+#' Calculate the conditional mean & variance of a sub-vector
 #' of a vector given the rest of known elements, following multivariate normal distribution.
 #' This function calculates the conditional mean & variance of a multivariate normal distribution.
 #' with (meanVec, varMat), conditional on y at indices conditionalIndex.
@@ -29,9 +29,9 @@ conditionalDistMvnorm <- function(y, conditionalIndex, meanVec, varMat)
 	return (list('mean'=mNew,'var' = vNew))
 }
 
-#' compute the covariance matrix of some observations of the AR model
+#' Compute the covariance matrix of some observations of the AR model
 #'
-#' compute the covariance matrix of \deqn{(\eta_t,\cdots,\eta_{t-lag})} of the AR model
+#' Compute the covariance matrix of \deqn{(\eta_t,...,\eta_{t-lag})} of the AR model.
 #' @param arPrmtr the parameter of the AR model.
 #' @param sigmaEps the standard deviation of the residuals of the AR model.
 #' @param lag number of lags to be computed, including lag at zero.
@@ -42,7 +42,7 @@ computeCovAR <- function(arPrmtr, sigmaEps, lag=length(arPrmtr)+1)
 	#print(roots)
 	if(any(abs(roots)<=1))
 		warning(" arPrmtr is not stationary",paste(arPrmtr,sep=',')," Roots:", roots)
-	val <- ARMAacf(ar=arPrmtr, lag.max=lag)
+	val <- stats::ARMAacf(ar=arPrmtr, lag.max=lag)
 	#print(val)
 	val <- as.vector(val)
 

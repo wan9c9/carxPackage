@@ -2,18 +2,22 @@
 % Please edit documentation in R/carx_default.R
 \name{carx.formula}
 \alias{carx.formula}
-\title{provide a simple formula interface to the \code{carx} method}
+\title{Provide a simple formula interface to the \code{carx} method}
 \usage{
 \method{carx}{formula}(formula, data = list(), ...)
 }
 \arguments{
 \item{formula}{the formula.}
 
-\item{data}{the data.}
+\item{data}{the data, can be a \code{list}, \code{data.frame}, or a \code{cenTS} object.}
 
 \item{...}{other arguments supplied to \code{\link{carx.default}}.}
 }
 \description{
-provide a simple formula interface to the \code{carx} method
+This interface will use the supplied \code{formula} and data provided by \code{data} and other arguments in \code{...} to invoke the \code{carx.default} method.
+}
+\examples{
+dat = carxSim(nObs=100,seed=0)
+model0 <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
 }
 

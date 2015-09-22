@@ -2,10 +2,10 @@
 % Please edit documentation in R/carx_plots.R
 \name{plot.carx}
 \alias{plot.carx}
-\title{plot a fitted \code{carx} object}
+\title{Plot a fitted \code{carx} object}
 \usage{
 \method{plot}{carx}(x, FUN = identity, xAxisVar = NULL, xlab = "Index",
-  ylab = "Response", outliers = NULL, ...)
+  ylab = "Response", ...)
 }
 \arguments{
 \item{x}{a fitted \code{carx} object.}
@@ -21,12 +21,27 @@ sequential.}
 
 \item{ylab}{the label for y axis, default = "Response".}
 
-\item{outliers}{a \code{NULL} value or a vector, each element of which indicates a location at which the response is treated as an outlier, default = \code{NULL}, i.e., no outlier}
-
 \item{...}{other parameters supplied to the generic function \code{plot}.}
+}
+\value{
+None. A plot will be displayed.
 }
 \description{
 \code{plot.carx} plots a fitted \code{carx} object with other settings
-the y axis will be the response, the x axis can be supplied by the user.
+the y axis will be the values related to the response. If the object is fitted with a \code{cenTS} object which is obtained by \code{object$cenTS}, the function will take advantage of the plot function for a \code{cenTS} object and plot the fitted values. Otherwise, the plot function will try to produce a plot similar to the previous case, while the x axis can be supplied by the user through \code{xAxisVar}, which must be ordinal and increasing.
+}
+\examples{
+#case 1: plot with cenTS object in the object, note that the x-axis is in date.
+dat = carxSimCenTS(nObs=100,seed=0)
+model0 <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+#use default settings
+plot(model0)
+
+#case 2: plot without cenTS object in the object, noe that the x-axis is just numbers.
+dat = carxSim(nObs=100,seed=0)
+model0 <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, p=2)
+#or simply call
+model0 <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+plot(model0)
 }
 

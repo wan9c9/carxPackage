@@ -2,9 +2,9 @@
 % Please edit documentation in R/carx_residuals.R
 \name{residuals.carx}
 \alias{residuals.carx}
-\title{compute the residuals of a fitted \code{carx} object}
+\title{Compute the simulated residuals of a fitted \code{carx} object}
 \usage{
-\method{residuals}{carx}(object, type = "pearson", seed = 1, ...)
+\method{residuals}{carx}(object, type = c("raw", "pearson"), seed = 0, ...)
 }
 \arguments{
 \item{object}{a fitted \code{carx} object.}
@@ -13,12 +13,14 @@
 "raw" returns the simulated residuals;
 "pearson" returns the raw residuals divided by estimated standard error of the residuals.}
 
+\item{seed}{the seed for random number generator.}
+
 \item{...}{not used.}
 }
 \value{
 the simulated residuals.
 }
 \description{
-\code{residuals.carx} computes the simulated residuals from a fitted \code{carx} object.
+Compute the simulated residuals of a fitted \code{carx} object
 }
 

@@ -2,7 +2,7 @@
 % Please edit documentation in R/carx_default.R
 \name{print.carx}
 \alias{print.carx}
-\title{print a short description of the fitted model (only a few lines)}
+\title{Print a short description of the fitted model}
 \usage{
 \method{print}{carx}(x, ...)
 }
@@ -11,7 +11,10 @@
 
 \item{...}{not used.}
 }
+\value{
+none.
+}
 \description{
-print a short description of the fitted model (only a few lines)
+Print a short description of the fitted model
 }
 

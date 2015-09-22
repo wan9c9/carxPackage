@@ -14,9 +14,9 @@
 \item{k}{penalty for the number of parameters, default = 2.}
 }
 \value{
-the AIC value.
+the AIC value
 }
 \description{
-return the AIC of a fitted \code{carx} object
+Return the AIC of a fitted \code{carx} object based on the quasi-log-likelihood.
 }
 

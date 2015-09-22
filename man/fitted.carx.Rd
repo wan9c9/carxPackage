@@ -2,7 +2,7 @@
 % Please edit documentation in R/carx_fitted.R
 \name{fitted.carx}
 \alias{fitted.carx}
-\title{The fitted values from a \code{carx} object}
+\title{Fitted values of a \code{carx} object}
 \usage{
 \method{fitted}{carx}(object, ...)
 }
@@ -10,6 +10,9 @@
 \item{object}{a fitted \code{carx} object.}
 
 \item{...}{not used.}
+}
+\value{
+the fitted values.
 }
 \description{
 Compute the fitted values from a \code{carx} object.

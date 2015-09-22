@@ -2,7 +2,7 @@
 % Please edit documentation in R/carx_util.R
 \name{computeCovAR}
 \alias{computeCovAR}
-\title{compute the covariance matrix of some observations of the AR model}
+\title{Compute the covariance matrix of some observations of the AR model}
 \usage{
 computeCovAR(arPrmtr, sigmaEps, lag = length(arPrmtr) + 1)
 }
@@ -17,6 +17,6 @@ computeCovAR(arPrmtr, sigmaEps, lag = length(arPrmtr) + 1)
 the covariance matrix needed.
 }
 \description{
-compute the covariance matrix of \deqn{(\eta_t,\cdots,\eta_{t-lag})} of the AR model
+Compute the covariance matrix of \deqn{(\eta_t,...,\eta_{t-lag})} of the AR model.
 }
 

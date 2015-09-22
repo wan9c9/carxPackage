@@ -1,24 +1,27 @@
-#' compute the residuals of a fitted \code{carx} object
-#'
-#' \code{residuals.carx} computes the simulated residuals from a fitted \code{carx} object.
+#' Compute the simulated residuals of a fitted \code{carx} object
 #' @param object a fitted \code{carx} object.
 #' @param type a string indicates which type of residual is to be returned.
 #' "raw" returns the simulated residuals;
 #' "pearson" returns the raw residuals divided by estimated standard error of the residuals.
+#' @param seed the seed for random number generator.
 #' @param ... not used.
 #' @return the simulated residuals.
 #' @export
-residuals.carx <- function(object,type="pearson",seed=1,...)
+residuals.carx <- function(object,type=c("raw","pearson"),seed=0,...)
 {
+  type <- match.arg(type)
   set.seed(seed)
 	nObs <- object$nObs
 	p <- object$p
 	y <- object$y
+  finiteRows <- object$finiteRows
 
 	trend <- object$x%*%object$prmtrX
 	eta <- object$y - trend
 	for(idx in 1:p)
 	{
+    if(!finiteRows[idx])
+      next
 		if(object$ci[idx] > 0)
 			y[idx] = object$ucl[idx]
 		else if(object$ci[idx] < 0 )
@@ -27,6 +30,8 @@ residuals.carx <- function(object,type="pearson",seed=1,...)
 
 	for(idx in (p+1):nObs)
 	{
+    if(!finiteRows[idx])
+      next
 		if(object$ci[idx] == 0)
 		{
 			#message(sprintf("idx %i, not censored",idx))

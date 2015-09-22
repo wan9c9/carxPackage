@@ -1,6 +1,12 @@
 
-#' compute the coefficients of MA representation of an AR model
+#' Predict a regression model with AR errors
 #'
+#' @param y response data used to fit the model.
+#' @param x covariate matrix  used to fit the model.
+#' @param prmtrX coefficients for covariates.
+#' @param prmtrAR coefficients for AR model of the residuals.
+#' @param sigma innovation standard deviation.
+#' @inheritParams predict.carx
 
 predictARX <- function(y,x,prmtrX,prmtrAR,sigma,n.ahead,newxreg,CI.level=0.95)
 {
@@ -8,11 +14,11 @@ predictARX <- function(y,x,prmtrX,prmtrAR,sigma,n.ahead,newxreg,CI.level=0.95)
   p <- length(prmtrAR)
   stopifnot( nObs >= p )
   iStart <- nObs-p+1 #use only latest p observations
-  nStart <- p 
+  nStart <- p
   x <- as.matrix(x)
   newxreg <- as.matrix(newxreg)
-	newxreg <- rbind(as.matrix(x[iStart:nObs,]),newxreg)
-	eta <- y[iStart:nObs] - as.matrix(x[iStart:nObs,])%*%prmtrX
+	newxreg <- rbind(x[iStart:nObs,,drop=FALSE],newxreg)
+	eta <- y[iStart:nObs] - x[iStart:nObs,,drop=FALSE]%*%prmtrX
 	eta <- c(eta, rep(0,n.ahead))
   yPred <- c(y[iStart:nObs], rep(0,n.ahead))
   coefs <- matrix(rep(0,n.ahead*n.ahead),nrow=n.ahead,ncol=n.ahead)
@@ -34,7 +40,7 @@ predictARX <- function(y,x,prmtrX,prmtrAR,sigma,n.ahead,newxreg,CI.level=0.95)
   }
   yPred <- yPred[-(1:p)]
   probs <- c((1-CI.level)/2,(1+CI.level)/2)
-  q <- qnorm(probs)
+  q <- stats::qnorm(probs)
   qntl <- matrix(nrow=n.ahead,ncol=2)
   qntl[,1] <- yPred + predSE*q[1]
   qntl[,2] <- yPred + predSE*q[2]
@@ -44,23 +50,23 @@ predictARX <- function(y,x,prmtrX,prmtrAR,sigma,n.ahead,newxreg,CI.level=0.95)
 
 #' Provide predictions with fitted \code{carx} object
 #'
-#' \code{predict.carx} provides an method to predict the future values of an fitted
-#' \code{carx} object with given new observations in \code{x}.
+#' Predict the future values of an fitted \code{carx} object with given new observations in \code{x}.
 #' @param object A fitted \code{carx} object.
 #' @param newxreg The new observations for the coverates \code{x}.
-#' If there is no covariates, the value can be assigned to be \code{NULL}.
-#' Otherwise, an matrix of new observations is required for give predictions.
-#' @param n.ahead The number of steps ahead the user wants to predict, default = 1.
-#' @param CI.level The CI.level used to construct the Confidence interval, default = 0.95.
-#' @param nRep The number of replications to be performed when censoring exists in the last \code{p}
+#' If there is no covariate, the value can be assigned to be \code{NULL}.
+#' Otherwise, a matrix of new observations is required to compute predictions.
+#' @param n.ahead The number of steps ahead to predict, default = 1.
+#' @param CI.level The CI.level to construct the Confidence interval, default = 0.95.
+#' @param nRep The number of replications to be performed in the bootstrap for prediction confidence intervals when censoring exists in the last \code{p}
 #' observations, default = 1000.
+#' @param na.action how should \code{model.frame} deal with \code{NA} values.
 #' @param ... not used.
 #' @return A list consisting of \code{fit}, \code{se.fit}, and \code{ci} representing the predictions,
 #' standard errors of predictions, and confidence intervals respectively.
 #' @export
 predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,na.action=NULL,...)
 {
-  
+
   if( n.ahead < 1)
 	  stop("ERROR: n.ahead must be greater than or equal to 1.")
 
@@ -72,7 +78,7 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
   {
     if(is.null(newxreg))
       stop("ERROR: newxreg supplied is NULL, but the x data in model is not ones.")
-    
+
     newxreg <- as.matrix(newxreg)
     if(dim(newxreg)[1] != n.ahead)
         stop("New data doesn't have the same row of data as n.ahead.")
@@ -91,13 +97,26 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
       if(dim(newxreg)[2] != dim(object$x)[2])
       {
         message("I am trying to combine the formula and your supplied data.")
-        mf <- model.frame(formula=getCovariateFormula(fml),data=as.data.frame(newxreg),na.action=NULL)
-        newxreg <- model.matrix(attr(mf,"terms"),data=mf)
-
+        cfml <- fml
+        newxreg <- as.data.frame(newxreg)
+        if(!is.null(object$outlier.indices))
+        {
+          #add outlier variables to the data
+          for(idx in object$outlier.indices)
+          {
+            newVar = paste0(object$outlier.prefix,idx)
+            nms <- names(newxreg)
+            newxreg$newVarByChao <- numeric(n.ahead)
+            names(newxreg) <- c(nms,newVar)
+          }
+        }
+        cfml <- nlme::getCovariateFormula(cfml)
+        mf <- stats::model.frame(formula=cfml,data=as.data.frame(newxreg),na.action=NULL)
+        newxreg <- stats::model.matrix(attr(mf,"terms"),data=mf)
       }
     }
   }
- 
+
   p <- object$p
   nObs <- object$nObs
   probs <- c((1-CI.level)/2,(1+CI.level)/2)
@@ -120,11 +139,13 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
   stopifnot(all(is.finite(object$y[iStart:nObs]))) #this means there exists na values from iStart which we cannot handle right now.
 
 	nStart <- nObs - iStart + 1
-	
+
 	if(nStart == p)
 	{
 	  message("latest p observations are not censored")
-    predictARX(object$y,object$x,object$prmtrX,object$prmtrAR,object$sigma,n.ahead,newxreg,CI.level=CI.level)
+    predictARX(object$y,object$x,object$prmtrX,
+               object$prmtrAR,object$sigma,
+               n.ahead,newxreg,CI.level=CI.level)
   }
 	else
 	{
@@ -158,7 +179,7 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
     tmpUpper[censored<0] <- object$lcl[nObs:iStart][tmpCensorIndicator<0]
 
     yCensored <- tmvtnorm::rtmvnorm(nRep,tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
-    eps <- matrix(rnorm(nRep*n.ahead,0,object$sigma),nrow=nRep,ncol=n.ahead)
+    eps <- matrix(stats::rnorm(nRep*n.ahead,0,object$sigma),nrow=nRep,ncol=n.ahead)
     etaFuture <- matrix(nrow=nRep,ncol=nStart+n.ahead)
 
     for(iRep in 1:nRep)
@@ -171,7 +192,7 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
     }
     center <- newxreg[-(1:nStart),]%*%object$prmtrX
     for(i in 1:n.ahead)
-	    qntl[i,] <- quantile(etaFuture[,nStart+i],probs=probs)
+	    qntl[i,] <- stats::quantile(etaFuture[,nStart+i],probs=probs)
     qntl[,1] <- qntl[,1] + center
     qntl[,2] <- qntl[,2] + center
     yPred <-  colMeans(etaFuture[,-(1:nStart)])

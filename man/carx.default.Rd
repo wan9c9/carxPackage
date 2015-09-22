@@ -2,11 +2,12 @@
 % Please edit documentation in R/carx_default.R
 \name{carx.default}
 \alias{carx.default}
-\title{\code{carx.default} is the default method for CARX.}
+\title{The default estimation method for CARX}
 \usage{
-\method{carx}{default}(y, x, ci, lcl, ucl, p = 1, prmtrX = NULL,
-  prmtrAR = NULL, sigmaEps = NULL, tol = 1e-04, max.iter = 500,
-  CI.compute = TRUE, CI.level = 0.95, b = 1000, verbose = FALSE, ...)
+\method{carx}{default}(y, x, ci = NULL, lcl = NULL, ucl = NULL, p = 1,
+  prmtrX = NULL, prmtrAR = NULL, sigmaEps = NULL, tol = 1e-04,
+  max.iter = 500, CI.compute = FALSE, CI.level = 0.95, b = 1000,
+  cenTS = NULL, verbose = FALSE, ...)
 }
 \arguments{
 \item{y}{a vector of possibly censored responses, only uncensored observation
@@ -15,11 +16,11 @@ marked by zeros of \code{ci} are used.}
 \item{x}{a matrix of covariates, or some object which can be coerced to matrix.}
 
 \item{ci}{a vector of -1,0,1's indicating that the corresponding y is
-left-censored, not censored, and right-censored respectively.}
+left-censored, not censored, and right-censored respectively. Default = NULL, indicating no censoring.}
 
-\item{lcl}{a vector of lower censoring limits, or a number assuming constant limit.}
+\item{lcl}{a vector of lower censoring limits, or a number assuming constant limit, default = NULL, implying no lower censoring limit.}
 
-\item{ucl}{a vector of upper censoring limits, or a number assuming constant limit.}
+\item{ucl}{a vector of upper censoring limits, or a number assuming constant limit, default = NULL, implying no upper censoring limit.}
 
 \item{p}{the order of AR model for the regression errors, default = 1.}
 
@@ -34,42 +35,30 @@ left-censored, not censored, and right-censored respectively.}
 \item{max.iter}{maximum number of iterations allowed when estimating parameters, default = 500.}
 
 \item{CI.compute}{bool value to indicate if the confidence interval for the
-parameter is to be constructed, default = \code{TRUE}.}
+parameter is to be constructed, default = \code{FALSE}.}
 
 \item{CI.level}{numeric value in (0,1) to get the \code{CI.level} confidence interval for the parameter, default = 0.95.}
 
 \item{b}{number of bootstrap samples when estimating confidence interval for the parameter, default = 1000.}
 
+\item{cenTS}{an optional argument to store \code{cenTS} object, which might be relevant to data used, used in \code{carx.formula}, default = NULL.}
+
 \item{verbose}{bool value indicates whether to print intermediate information, default = FALSE.}
 
 \item{...}{not used.}
-
-\item{skipIndex}{a vector of indices indicating indices to be skipped, as some initial values are needed to calculate the conditional log-likelihood, also is the initial values to calculate the conditional log-likelihood, useful if there are multiple segment of series in the whole series.}
 }
 \value{
 a CARX object of the estimated model.
 }
 \description{
-\code{carx.default} uses given data and other settings to estimate the parameters of CARX, and optionally compute the standard error or confidence intervals of parameter estimates by parametric bootstrap.
+Use given data and other settings to estimate the parameters of CARX, and optionally compute the standard error or confidence intervals of parameter estimates by parametric bootstrap.
 }
 \examples{
-trueX = c(0.2,0.4)
-p = 2
-trueAR = c(-0.28,0.25)
-trueSigma = 0.60
-lcl = -1
-ucl = 1
-dat = carx.sim(100, trueAR, trueX, trueSigma, lcl, ucl, seed=0)
-model0 <- carx(dat$y, dat$x,ci=dat$ci,
-              lcl = dat$lcl,
-              ucl = dat$ucl,
-              p = p,
-              CI.compute = FALSE)
-\dontrun{model1 <- carx(dat$y, dat$x,ci=dat$ci,
-              lcl = dat$lcl,
-              ucl = dat$ucl,
-		           p = p,
-		           CI.compute = TRUE,
-              ) }
+dat = carxSim(nObs=100,seed=0)
+model0 <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, p=2)
+#or simply call
+model0 <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+plot(model0)
+tsdiag(model0)
 }
 

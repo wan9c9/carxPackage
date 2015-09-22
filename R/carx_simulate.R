@@ -1,6 +1,6 @@
-#' simulates a sample data for \code{carx}.
+#' Simulate a sample data for \code{carx}
 #'
-#' \code{simulate.carx} uses provided parameters and other settings to simulate a series of data.
+#' Use provided parameters and other settings to simulate a series of data.
 #'
 #' @param nObs number of observations to be simulated.
 #' @param prmtrAR the AR parameter.
@@ -8,36 +8,28 @@
 #' @param sigmaEps the standard deviation for the white noises of the AR process.
 #' @param lcl the lower censor limit.
 #' @param ucl the upper censor limit.
-#' @param x optional matrix for X.
+#' @param x optional matrix for X, default = \code{NULL}, in which case X will be simulated from standard normal distribution with dimensions determined by \code{nObs} and \code{prmtrX}.
 #' @param seed optional to set the seed of random number generator used by \code{R}.
-#' @return a list of simulated \code{y}, \code{x}, \code{ci}, \code{lcl} and \code{ucl}.
+#' @return a data frame of simulated \code{y}, \code{x}, \code{ci}, \code{lcl} and \code{ucl}.
 #' @export
 #' @examples
-#' nObs = 100
-#' trueX = c(0.2,0.4)
-#' trueAR = c(-0.28,0.25)
-#' trueSigma = 0.60
-#' lcl = -1
-#' ucl = 1
-#' dat = carx.sim(100, trueAR, trueX, trueSigma, lcl, ucl, seed=0)
-#' cts = carx.sim.cenTS(100, trueAR, trueX, trueSigma, lcl, ucl, seed=0)
+#' dat = carxSim()
 
-#simulate <- function(nObs, prmtrAR, prmtrX, sigmaEps, lcl, ucl, x = NULL, seed=NULL) UseMethod("simulate")
-carx.sim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL)
+carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL)
 {
 	p <- length(prmtrAR)
 	nX <- length(prmtrX)
 
 	if(!is.null(seed))
 		set.seed(seed)
-	eps <- rnorm(nObs,0, sigmaEps)
+	eps <- stats::rnorm(nObs,0, sigmaEps)
 
 	if(is.null(x))
   {
-		x <- matrix(rnorm(nObs*nX), nrow= nObs, ncol = nX)
+		x <- matrix(stats::rnorm(nObs*nX), nrow= nObs, ncol = nX)
   }
 
-  if(is.null(colnames(x))) 
+  if(is.null(colnames(x)))
     colnames(x) <- paste0("X",seq(1,nX))
 
 	trend <- x%*%prmtrX
@@ -57,28 +49,39 @@ carx.sim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEp
 
   if(options()$verbose) message(paste0("simulated series: censor rate: ", sum(abs(ci))/nObs))
 	ret <- list(y = y,
-		    x = x,
 		    ci=ci,
 		    lcl=lcl,
-		    ucl=ucl
+		    ucl=ucl,
+		    x = x
 		    )
+  ret <- data.frame(ret)
+  colnames(ret) <- c("y","ci","lcl","ucl",colnames(x))
 	ret
 }
 
 
-
-carx.sim.cenTS <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL, end.date=Sys.Date())
+#' simulate a sample \code{\link{cenTS}} data for \code{carx}
+#'
+#' Use provided parameters and other settings to simulate a series of data as a \code{cenTS} object.
+#'
+#' @inheritParams carxSim
+#' @param value.name the name of the response series
+#' @param end.date the date of the last observation, default = \code{Sys.date()}.
+#' @return a \code{cenTS} object with regressors.
+#' @seealso \code{\link{carxSim}}.
+#' @export
+#' @examples
+#' cts = carxSimCenTS()
+carxSimCenTS <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL, value.name = 'y', end.date=Sys.Date())
 {
-  ret <- carx.sim(nObs,prmtrAR, prmtrX, sigmaEps, lcl, ucl, x, seed)
-  
-  listx <- lapply(seq_len(ncol(ret$x)), function(i) ret$x[,i])
-  names(listx) <- colnames(ret$x)
-  
-  listx$order.by <- end.date+seq(-nObs,-1,by=1)
-  listx$value <- ret$y
-  listx$lcl <- ret$lcl
-  listx$ucl <- ret$ucl
-  
-  val <- do.call(cenTS,listx)
-  val 
+  ret <- carxSim(nObs,prmtrAR, prmtrX, sigmaEps, lcl, ucl, x, seed)
+  #ret is a data.frame
+  names(ret) <- c("value",names(ret)[-1])
+  ret <- as.list(ret)
+  ret$order.by <- end.date+seq(-nObs,-1,by=1)
+  #listx$value <- ret$y
+  ret$value.name <- value.name
+
+  val <- do.call(cenTS,ret)
+  val
 }

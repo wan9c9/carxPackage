@@ -2,7 +2,7 @@
 % Please edit documentation in R/carx_default.R
 \name{print.summary.carx}
 \alias{print.summary.carx}
-\title{print the summary of an \code{carx} object}
+\title{Print the summary of an \code{carx} object}
 \usage{
 \method{print}{summary.carx}(x, ...)
 }
@@ -11,7 +11,10 @@
 
 \item{...}{not used.}
 }
+\value{
+none.
+}
 \description{
-print the summary of an \code{carx} object
+Print the summary of an \code{carx} object
 }
 

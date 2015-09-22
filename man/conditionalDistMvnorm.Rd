@@ -2,7 +2,7 @@
 % Please edit documentation in R/carx_util.R
 \name{conditionalDistMvnorm}
 \alias{conditionalDistMvnorm}
-\title{\code{conditionalDistMvnorm} calculates the conditional mean & variance of a random vector following multivariate normal distribution.}
+\title{Calculate the conditional mean & variance of a random vector following multivariate normal distribution}
 \usage{
 conditionalDistMvnorm(y, conditionalIndex, meanVec, varMat)
 }
@@ -19,7 +19,7 @@ conditionalDistMvnorm(y, conditionalIndex, meanVec, varMat)
 a list consisting of 'mean' and 'var' representing the conditional mean and variance respectively.
 }
 \description{
-\code{conditionalDistMvnorm} calculates the conditional mean & variance of a sub-vector
+Calculate the conditional mean & variance of a sub-vector
 of a vector given the rest of known elements, following multivariate normal distribution.
 This function calculates the conditional mean & variance of a multivariate normal distribution.
 with (meanVec, varMat), conditional on y at indices conditionalIndex.

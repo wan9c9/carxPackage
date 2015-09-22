@@ -1,21 +1,20 @@
 Package: carx
 Title: Censored Autoregressive Model with Exogenous Covariates
-Version: 0.0.0.9000
+Version: 0.5.0
+Date: 2015-08-30
 Authors@R: c(
-	person("Chao", "Wang", , "chaowang@connect.hku.hk", role = c("aut", "cre")),
-	person("Kung-Sik", "Chan", , "kung-sik-chan@uiowa.edu", role = c("aut")))
-Description: This package implements an estimation procedure to
-	estimate the Censored AutoRegressive time series
-	with eXogenous covariates (CARX) and some other functions that
-	might be useful.
+	person("Chao", "Wang", role = c("aut", "cre"), email = "chaowang@connect.hku.hk"),
+	person("Kung-Sik", "Chan", role = c("aut"), email = "kung-sik-chan@uiowa.edu"))
+Description: A censored time series class is designed. An estimation procedure is implemented to estimate the Censored AutoRegressive time series with eXogenous covariates (CARX), assuming normality of the innovations. Some other functions that might be useful are also included.
 Depends: R (>= 1.9.0)
 License: GPL-3
 LazyData: true
 Imports:
 	tmvtnorm,
 	matrixStats,
-	foreach,
-	doParallel,
-	parallel,
-	doMC
-Suggests: testthat
+	xts,
+	zoo,
+	nlme,
+	grDevices,
+	graphics,
+	stats

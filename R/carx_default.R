@@ -1,29 +1,16 @@
-#' \code{carx}: A package to fit Censored Auto-Regressive model with eXogenous covariates (CARX).
-#'
-#' \code{carx}: A package to fit Censored AutoRegressive model with eXogenous
-#' covariates (CARX), which can also be viewed as regression models with possibly
-#' censored responses
-#' and autoregressive residuals. \code{carx} allows left, right, or interval
-#' censoring for the response variable. The regression errors are assumed to
-#' follow an autoregressive model with normal innovations. This package also
-#' contains functions to predict the future values, diagnose whether the model is
-#' adequate, and plot functions to illustrate the data and model.
-#'
-#' @docType package
-#' @name carx
-NULL
 
 #' @export
 carx <- function(y,...) UseMethod("carx")
 
-#' \code{carx.default} is the default method for CARX.
+
+#' The default estimation method for CARX
 #'
-#' \code{carx.default} uses given data and other settings to estimate the parameters of CARX, and optionally compute the standard error or confidence intervals of parameter estimates by parametric bootstrap.
+#' Use given data and other settings to estimate the parameters of CARX, and optionally compute the standard error or confidence intervals of parameter estimates by parametric bootstrap.
 #' @param y a vector of possibly censored responses, only uncensored observation
 #' marked by zeros of \code{ci} are used.
 #' @param x a matrix of covariates, or some object which can be coerced to matrix.
 #' @param ci a vector of -1,0,1's indicating that the corresponding y is
-#' left-censored, not censored, and right-censored respectively.
+#' left-censored, not censored, and right-censored respectively. Default = NULL, indicating no censoring.
 #' @param lcl a vector of lower censoring limits, or a number assuming constant limit, default = NULL, implying no lower censoring limit.
 #' @param ucl a vector of upper censoring limits, or a number assuming constant limit, default = NULL, implying no upper censoring limit.
 #' @param p the order of AR model for the regression errors, default = 1.
@@ -33,49 +20,42 @@ carx <- function(y,...) UseMethod("carx")
 #' @param tol the tolerance in estimating the parameters, default = 1.0e-4.
 #' @param max.iter maximum number of iterations allowed when estimating parameters, default = 500.
 #' @param CI.compute bool value to indicate if the confidence interval for the
-#' parameter is to be constructed, default = \code{TRUE}.
+#' parameter is to be constructed, default = \code{FALSE}.
 #' @param CI.level numeric value in (0,1) to get the \code{CI.level} confidence interval for the parameter, default = 0.95.
 #' @param b number of bootstrap samples when estimating confidence interval for the parameter, default = 1000.
-#' @param skipIndex a vector of indices indicating indices to be skipped, as some initial values are needed to calculate the conditional log-likelihood, also is the initial values to calculate the conditional log-likelihood, useful if there are multiple segment of series in the whole series.
+#' @param cenTS an optional argument to store \code{cenTS} object, which might be relevant to data used, used in \code{carx.formula}, default = NULL.
 #' @param verbose bool value indicates whether to print intermediate information, default = FALSE.
 #' @param ... not used.
 #' @return a CARX object of the estimated model.
 #' @export
 #' @examples
-#' trueX = c(0.2,0.4)
-#' p = 2
-#' trueAR = c(-0.28,0.25)
-#' trueSigma = 0.60
-#' lcl = -1
-#' ucl = 1
-#' dat = carx.sim(100, trueAR, trueX, trueSigma, lcl, ucl, seed=0)
-#' model0 <- carx(dat$y, dat$x,ci=dat$ci,
-#'               lcl = dat$lcl,
-#'               ucl = dat$ucl,
-#'               p = p,
-#'               CI.compute = FALSE)
-#' \dontrun{model1 <- carx(dat$y, dat$x,ci=dat$ci,
-#'               lcl = dat$lcl,
-#'               ucl = dat$ucl,
-#' 		           p = p,
-#' 		           CI.compute = TRUE,
-#'               ) }
+#' dat = carxSim(nObs=100,seed=0)
+#' model0 <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, p=2)
+#' #or simply call
+#' model0 <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+#' plot(model0)
+#' tsdiag(model0)
 
-carx.default <- function(y,x,ci,lcl=NULL,ucl=NULL,
+carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
        p=1,prmtrX=NULL,prmtrAR=NULL,sigmaEps=NULL,
-			 tol=1e-4,max.iter=500,CI.compute=TRUE,CI.level=0.95,b=1000,
-			 verbose=FALSE,...)
+			 tol=1e-4,max.iter=500,CI.compute=FALSE,CI.level=0.95,b=1000,
+			 cenTS=NULL,verbose=FALSE,...)
 {
+  #message("Enter carx.default.")
 	verbose <- verbose || options()$verbose
 	nObs <- length(y)
 
+  finiteY <- which(is.finite(y))
+
 	#standardize censoreIndicator
-	ci[ ci>0 ] <- 1; ci[ ci<0 ] <- -1
-	noCensor  <- all(ci == 0)
+  if(is.null(ci))
+    ci <- rep(0,length(y))
+	ci[finiteY][ ci[finiteY]>0 ] <- 1; ci[finiteY][ ci[finiteY]<0 ] <- -1
+	noCensor  <- all(ci[finiteY] == 0)
 
 	if(is.null(lcl)) # no lower censoring
 	{
-		if(any(ci<0))
+		if(any(ci[finiteY]<0))
 			stop("Error in data: lcl is null but there exist left-censored data.")
 		else
 			lcl = rep(-Inf,nObs)
@@ -99,7 +79,7 @@ carx.default <- function(y,x,ci,lcl=NULL,ucl=NULL,
 
 	if(is.null(ucl)) #no upper censoring
 	{
-		if(any(ci>0)) #check
+		if(any(ci[finiteY]>0)) #check
 			stop("Error in data: ucl is null but there exist right-censored data.")
 		else
 			ucl = rep(Inf,nObs)
@@ -120,7 +100,7 @@ carx.default <- function(y,x,ci,lcl=NULL,ucl=NULL,
 				stop("Error: The dimesion of upper censor limit doesn't match that of y.")
 		}
 	}
-	
+
   if(!is.null(x))
 	{
 		if(!is.matrix(x)) # x may be a vector
@@ -162,7 +142,7 @@ carx.default <- function(y,x,ci,lcl=NULL,ucl=NULL,
 
 	if(any(lcl[-skipIndex] >= ucl[-skipIndex]))
 		stop("Error in censor limit: some lower censor limits are bigger than upper censor limits.")
-  
+
 	ret = list(y = y,
 		   x = externalVariable,
 		   xIsOne = xIsOne,
@@ -175,6 +155,8 @@ carx.default <- function(y,x,ci,lcl=NULL,ucl=NULL,
        CI.level = CI.level,
        b = b,
 		   skipIndex = skipIndex,
+       finiteRows = finiteRows,
+       cenTS=cenTS,
        verbose = verbose
 		   )
 	#print(ret)
@@ -202,6 +184,12 @@ carx.default <- function(y,x,ci,lcl=NULL,ucl=NULL,
 	wkCov <- array(0, dim=c(nObs,p+1,p+1))
 	res <- numeric(nObs)
 
+  getNPrmtr <- function(){
+		return (nX + p +  1)
+	}
+
+  pVal <- numeric(getNPrmtr())
+
 
 	# working space
 	resetWK <- function()
@@ -219,9 +207,6 @@ carx.default <- function(y,x,ci,lcl=NULL,ucl=NULL,
 	}
 	#-------------------------------
 
-	getNPrmtr <- function(){
-		return (nX + p +  1)
-	}
 
 	getPrmtr <- function(){
 		ret <- c(prmtrX, prmtrAR, sigmaEps)
@@ -229,7 +214,7 @@ carx.default <- function(y,x,ci,lcl=NULL,ucl=NULL,
 	}
 
 	getCensorRate <- function(){
-		return(sum(abs(ci))*1.0/nObs)
+		return(sum(abs(ci[finiteRows]))*1.0/sum(finiteRows))
 	}
 
 
@@ -389,6 +374,7 @@ carx.default <- function(y,x,ci,lcl=NULL,ucl=NULL,
 	}
 
 	mStep <- function(){
+    prevPrmtr <- c(prmtrX,prmtrAR,sigmaEps)
 		delta <- 0
 
 		newPrmtrAR <- updatePrmtrAR()
@@ -402,9 +388,8 @@ carx.default <- function(y,x,ci,lcl=NULL,ucl=NULL,
 		newSigmaEps <- updateSigmaEps()
 		delta <- delta + abs(newSigmaEps - sigmaEps)
 		sigmaEps <<- newSigmaEps
-
-		#return( delta/sqrt(sum(prmtrAR^2)+sum(prmtrX^2)+sum(sigmaEps^2)) )
-		return( delta )
+		
+    return(delta/sqrt(sum(prevPrmtr)^2))
 	}
 
 	estimatePrmtr <- function(tol,max.iter)
@@ -451,7 +436,7 @@ carx.default <- function(y,x,ci,lcl=NULL,ucl=NULL,
 
 	bootstrapSample <- function()
 	{
-		eps <- rnorm(nObs,0, sigmaEps)
+		eps <- stats::rnorm(nObs,0, sigmaEps)
 
 		updateTrend()
 
@@ -484,12 +469,12 @@ carx.default <- function(y,x,ci,lcl=NULL,ucl=NULL,
 		}
 		#close(pb)
 		qv <- c((1-CI.level)/2,1-(1-CI.level)/2)
-		for(j in 1:getNPrmtr()){
-			CI[j,] <<- quantile(tmpResult[,j],qv)
-      pVal[j] <- mean(tmpResult[,j]>getEstdPrmtr()[j])
-
+		for(j in 1:(getNPrmtr())){
+			CI[j,] <<- stats::quantile(tmpResult[,j],qv)
+      pval <- mean(tmpResult[,j]>0)
+      pVal[j] <<- 2*min(pval,1-pval)
 		}
-		covMat <<- cov(tmpResult)
+		covMat <<- stats::cov(tmpResult)
 		y <<- yOriginal #set back observed data
 	}
 
@@ -546,66 +531,63 @@ carx.default <- function(y,x,ci,lcl=NULL,ucl=NULL,
     ret$pVal <- NULL
 	}
 	class(ret) <- "carx"
+  #message("Exit carx.default.")
 	ret
 }
 
-#' provide a simple formula interface to the \code{carx} method
+#' Provide a simple formula interface to the \code{carx} method
+#'
+#' This interface will use the supplied \code{formula} and data provided by \code{data} and other arguments in \code{...} to invoke the \code{carx.default} method.
 #' @param formula the formula.
-#' @param data the data.
+#' @param data the data, can be a \code{list}, \code{data.frame}, or a \code{cenTS} object.
 #' @param ... other arguments supplied to \code{\link{carx.default}}.
 #' @export
+#' @examples
+#' dat = carxSim(nObs=100,seed=0)
+#' model0 <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+
 carx.formula <- function(formula, data=list(),...)
 {
+  #message("Enter carx.formula")
+  vars <- list(...)
+  nvars <- names(vars)
+
   if('cenTS' %in% class(data))
   {
-    data2 <- data.frame(coredata(data))
-    #x <- xreg(data)
-    #data2 <- data.frame(data2,x)
+    data2 <- data.frame(zoo::coredata(data))
+    vars$cenTS <- data
   }
   else
     data2 <- data
-    
-	mf <- model.frame(formula=formula,data=data2,na.action=NULL)
-	y <- model.response(mf)
-	x <- model.matrix(attr(mf,"terms"),data=mf)
-  vars <- list(...)
 
-  nvars <- names(vars)
+	mf <- stats::model.frame(formula=formula,data=data2,na.action=NULL)
+	y <- stats::model.response(mf)
+	x <- stats::model.matrix(attr(mf,"terms"),data=mf)
 
-  if( "lcl" %in% names(data2) ) 
+  if( "lcl" %in% names(data2) )
     vars$lcl <- data2$lcl
 
-  if( "ucl" %in% names(data2) ) 
+  if( "ucl" %in% names(data2) )
     vars$ucl <- data2$ucl
 
-  #construct ci
-  #ci <- rep(0,length(y))
-  #idx <- is.finite(y) & is.finite(data2$lcl)
-  #idx2 <- y[idx] <= data2$lcl[idx]
-  #ci[idx][idx2] <- -1
-  
-  #idx <- is.finite(y) & is.finite(data2$ucl)
-  #idx2 <- y[idx] >= data$ucl[idx]
-  #ci[idx][idx2] <- 1
-  if( "ucl" %in% names(data2) )
+  if( "ci" %in% names(data2) )
     vars$ci <- data2$ci
-
-  #}
-  #}
 
   toPass <- c(list(y=y,x=x),vars)
 	#est <- carx.default(y,x,...)
   est <- do.call(carx.default,toPass)
 	est$call <- match.call()
+  #print(est$call)
 	est$formula <- formula
   est$data <- data
+  #message("Exit carx.formula")
 	est
 }
 
-#' returns the log-likelihood of a \code{carx} object
+#' Return the quasi-log-likelihood of a \code{carx} object
 #' @param object a fitted \code{carx} object.
 #' @param ... not used.
-#' @return the expected log-likelihood.
+#' @return the quasi-log-likelihood.
 #' @export
 logLik.carx <- function(object,...)
 {
@@ -616,11 +598,11 @@ logLik.carx <- function(object,...)
 
 #' The AIC of a fitted  \code{carx} object
 #'
-#' return the AIC of a fitted \code{carx} object
+#' Return the AIC of a fitted \code{carx} object based on the quasi-log-likelihood.
 #' @param object a fitted  \code{carx} object.
 #' @param ... not used.
 #' @param k penalty for the number of parameters, default = 2.
-#' @return the AIC value.
+#' @return the AIC value
 #' @export
 AIC.carx <- function(object,...,k=2)
 {
@@ -631,9 +613,10 @@ AIC.carx <- function(object,...,k=2)
 
 
 
-#' print a short description of the fitted model (only a few lines)
+#' Print a short description of the fitted model
 #' @param x a fitted model object.
 #' @param ... not used.
+#' @return none.
 #' @export
 print.carx <- function(x,...)
 {
@@ -673,7 +656,7 @@ print.carx <- function(x,...)
 	}
 }
 
-#' summarize the fitted model on parameters, residuals and model fit
+#' Summarize the fitted \code{carx} object
 #' @param object a fitted \code{carx} object.
 #' @param ... not used.
 #' @return a summary.
@@ -696,18 +679,12 @@ summary.carx <- function(object,...)
 		tVal <- c(coef(object),object$sigma)/se
 
 		est <- coef(object)
-		est["sigma"] <- object$sigma
 		tab <- cbind(Estimate = est,
-			     StdErr =  se,
-			     lowerCI = object$CI[,1],
-			     upperCI = object$CI[,2],
-           p.value = object$pVal
+			     StdErr =  se[1:(object$npar-1)],
+			     lowerCI = object$CI[1:(object$npar-1),1],
+			     upperCI = object$CI[1:(object$npar-1),2],
+           p.value = object$pVal[1:(object$npar-1)]
 			     )
-		#tab <- cbind(Estimate = numDig(c(coef(object),object$sigma),2,4),
-		#	 StdErr = numDig(se,2,4),
-		#	 lowerCI = numDig(object$CI[,1],2,4),
-		#	 upperCI = numDig(object$CI[,2],2,4)
-		#	 )
 	}
 	res <- list(call=object$call,
 		    coefficients=tab,
@@ -716,9 +693,10 @@ summary.carx <- function(object,...)
 	res
 }
 
-#' print the summary of an \code{carx} object
+#' Print the summary of an \code{carx} object
 #' @param x a summary of an \code{carx} object.
 #' @param ... not used.
+#' @return none.
 #' @export
 print.summary.carx <- function(x,...)
 {
@@ -729,7 +707,7 @@ print.summary.carx <- function(x,...)
 	cat("\nCoefficients:\n")
 	#print(x$coefficients)
   pval <- 'p.value' %in% colnames(x$coefficients)
-  printCoefmat(x$coefficients, P.value = pval, has.Pvalue = pval)
+  stats::printCoefmat(x$coefficients, P.values = pval, has.Pvalue = pval)
  cat(sprintf("Note: confidence intervals are based on %i bootstraps.  P.values are one-sided.\n", x$b))
 
 	cat("\nAIC:\n")
@@ -737,12 +715,3 @@ print.summary.carx <- function(x,...)
 }
 
 
-# tests
-#rslt <- carx.singleSimulation()
-#rslt
-#summary(rslt)
-
-#rslt <- carx.simulation()
-#print(rslt)
-#for(i in 1:10)
-#carx.singleSimulation(i)

@@ -1,8 +1,9 @@
-#' The fitted values from a \code{carx} object
+#' Fitted values of a \code{carx} object
 #'
 #' Compute the fitted values from a \code{carx} object.
 #' @param object a fitted \code{carx} object.
 #' @param ... not used.
+#' @return the fitted values.
 #' @export
 fitted.carx <- function(object,...)
 {
