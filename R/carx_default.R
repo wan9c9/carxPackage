@@ -38,6 +38,7 @@ carx <- function(y,...) UseMethod("carx")
 
 carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
        p=1,prmtrX=NULL,prmtrAR=NULL,sigmaEps=NULL,
+       nonfiniteYAsCensored=TRUE,
 			 tol=1e-4,max.iter=500,CI.compute=FALSE,CI.level=0.95,b=1000,
 			 cenTS=NULL,verbose=FALSE,...)
 {
@@ -51,7 +52,10 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
   if(is.null(ci))
     ci <- rep(0,length(y))
 	ci[finiteY][ ci[finiteY]>0 ] <- 1; ci[finiteY][ ci[finiteY]<0 ] <- -1
-	noCensor  <- all(ci[finiteY] == 0)
+
+	if(!is.null(prmtrAR) & length(prmtrAR) != p)
+	  stop("initial values of parameter vector of AR is supplied, but its length (",length(prmtrAR),") is not equal to the order p (",p,")")
+
 
 	if(is.null(lcl)) # no lower censoring
 	{
@@ -101,6 +105,27 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 		}
 	}
 
+	if(any(lcl[finiteY] >= ucl[finiteY]))
+		stop("Error in censor limit: some lower censor limits are bigger than upper censor limits.")
+
+
+	noCensor  <- all(ci[finiteY] == 0)
+  if(nonfiniteYAsCensored)
+  {
+    idx <- !is.finite(y)
+    if(any(idx))
+    {
+      ci[idx] <- -1
+      lcl[idx] <- Inf
+      ucl[idx] <- -Inf #no need to assign to both censoring limits
+      noCensor  <- FALSE
+      #treat non-finite Y as left-censored
+    }
+
+  }
+
+
+
   if(!is.null(x))
 	{
 		if(!is.matrix(x)) # x may be a vector
@@ -124,7 +149,10 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 	}
 
   #check for finite rows in data and construct skipIndex
-  finiteRows <- is.finite(y) & (apply(externalVariable, 1, function(x){all(is.finite(x))}))
+  finiteRows <- (apply(externalVariable, 1, function(x){all(is.finite(x))}))
+  if(!nonfiniteYAsCensored)
+    finiteRows <- finiteRows & is.finite(y)
+
   skipIndex <- rep(0,length(y))
   skipIndex[1:p] <- 1
   for(i in 1:length(y))
@@ -133,16 +161,8 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
       skipIndex[i:(i+p)] <- 1
   }
   skipIndex <- which(skipIndex > 0)
-  if(verbose)
-  {
-    message("Skip index is constructed as ")
-    message(paste(skipIndex,sep=', '))
-  }
+  if(verbose) message("Skip index is constructed as ", paste(skipIndex,collapse=', '))
 	nSkip <- length(skipIndex)
-
-	if(any(lcl[-skipIndex] >= ucl[-skipIndex]))
-		stop("Error in censor limit: some lower censor limits are bigger than upper censor limits.")
-
 	ret = list(y = y,
 		   x = externalVariable,
 		   xIsOne = xIsOne,
@@ -157,6 +177,7 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 		   skipIndex = skipIndex,
        finiteRows = finiteRows,
        cenTS=cenTS,
+		   nonfiniteYAsCensored=nonfiniteYAsCensored,
        verbose = verbose
 		   )
 	#print(ret)
@@ -388,7 +409,7 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 		newSigmaEps <- updateSigmaEps()
 		delta <- delta + abs(newSigmaEps - sigmaEps)
 		sigmaEps <<- newSigmaEps
-		
+
     return(delta/sqrt(sum(prevPrmtr)^2))
 	}
 
@@ -532,7 +553,7 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 	}
 	class(ret) <- "carx"
   #message("Exit carx.default.")
-	ret
+	invisible(ret)
 }
 
 #' Provide a simple formula interface to the \code{carx} method
