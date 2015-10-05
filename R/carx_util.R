@@ -42,7 +42,7 @@ computeCovAR <- function(arPrmtr, sigmaEps, lag=length(arPrmtr)+1)
 	#print(roots)
 	if(any(abs(roots)<=1))
 		warning(" arPrmtr is not stationary",paste(arPrmtr,sep=',')," Roots:", roots)
-	val <- stats::ARMAacf(ar=arPrmtr, lag.max=lag)
+	val <- stats::ARMAacf(ar=arPrmtr, lag.max=max(length(arPrmtr),lag))
 	#print(val)
 	val <- as.vector(val)
 
@@ -50,7 +50,8 @@ computeCovAR <- function(arPrmtr, sigmaEps, lag=length(arPrmtr)+1)
 	for(i in 1:lag)
 	{
 		mat[i,i] <- 1
-		if(i > 1){
+		if(i > 1)
+    {
 			for(j in 1:(i-1))
 			{
 				mat[i,j] <- val[abs(i-j)+1]
@@ -63,5 +64,3 @@ computeCovAR <- function(arPrmtr, sigmaEps, lag=length(arPrmtr)+1)
 	mat <- v[1,1]*mat
 	return(mat)
 }
-
-

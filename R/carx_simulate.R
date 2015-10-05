@@ -36,9 +36,12 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps
 
 	eta <- numeric(nObs)
 	y <- numeric(nObs)
-	eta[1:p] <- eps[1:p]
 
-	y[1:p] <- eps[1:p]
+  covAr <- computeCovAR(prmtrAR,sigmaEps,lag=p)
+  eta[1:p] <- as.vector(mvtnorm::rmvnorm(1,sigma=covAr))
+
+	y[1:p] <- trend[1:p] + eta[1:p]
+
 	for(i in (p+1):nObs){
 		eta[i] <- eta[(i-1):(i-p)] %*% prmtrAR + eps[i]
 		y[i] <- trend[i] + eta[i]

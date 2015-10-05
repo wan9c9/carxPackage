@@ -5,9 +5,10 @@
 \title{The default estimation method for CARX}
 \usage{
 \method{carx}{default}(y, x, ci = NULL, lcl = NULL, ucl = NULL, p = 1,
-  prmtrX = NULL, prmtrAR = NULL, sigmaEps = NULL, tol = 1e-04,
-  max.iter = 500, CI.compute = FALSE, CI.level = 0.95, b = 1000,
-  cenTS = NULL, verbose = FALSE, ...)
+  prmtrX = NULL, prmtrAR = NULL, sigmaEps = NULL,
+  nonfiniteYAsCensored = TRUE, tol = 1e-04, max.iter = 500,
+  CI.compute = FALSE, CI.level = 0.95, b = 1000, cenTS = NULL,
+  verbose = FALSE, ...)
 }
 \arguments{
 \item{y}{a vector of possibly censored responses, only uncensored observation
