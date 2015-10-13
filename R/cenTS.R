@@ -202,7 +202,7 @@ plot.cenTS <- function(x, type = "l", auto.grid = TRUE, major.ticks = "auto",
     else
     {
       ylim[1] <- min(ylim0[1],ylim[1])
-      ylim[2] <- max(ylim0[1],ylim[2])
+      ylim[2] <- max(ylim0[2],ylim[2])
     }
 
     graphics::plot(xycoords$x, xycoords$y, type = type, axes = FALSE, ann = FALSE, ylim=ylim,...)
