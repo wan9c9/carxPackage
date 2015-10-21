@@ -18,7 +18,7 @@
 #' \dontrun{carxSelect(y~X1,max.ar=3,data=dataSim)}
 #' \dontrun{carxSelect(formulas=fmls,max.ar=3,data=dataSim)}
 #'
-carxSelect <- function(formulas, max.ar, data=list(), detect.outlier=F,...)
+carxSelect <- function(formulas, max.ar, data=list(), detect.outlier=F,verbose=FALSE,...)
 {
   if(typeof(formulas) == 'language')
     formulas <- list(M1=formulas)
@@ -39,11 +39,11 @@ carxSelect <- function(formulas, max.ar, data=list(), detect.outlier=F,...)
     for( p in 1:max.ar)
     {
       #message(paste("Trying model fomula:",deparse(f), ", with AR order", p))
-      tmp <- carx(f,data=data, p=p, CI.compute=FALSE)
+      tmp <- carx(f,data=data, p=p, CI.compute=FALSE,...)
       if(detect.outlier)
         tmp <- outlier(tmp)
       a <- AIC(tmp)
-      message(paste0("Model formula:", deparse(formula(tmp)), ", ar order:",tmp$p, ", AIC: ", a))
+      if(verbose) message(paste0("Model formula:", deparse(formula(tmp)), ", AR order:",tmp$p, ", AIC: ", round(a,digits=4)))
       aics[i,p] <- a
       if(is.null(saic0))
       {

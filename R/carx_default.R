@@ -40,11 +40,13 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
        p=1,prmtrX=NULL,prmtrAR=NULL,sigmaEps=NULL,
        nonfiniteYAsCensored=TRUE,
 			 tol=1e-4,max.iter=500,CI.compute=FALSE,CI.level=0.95,b=1000,
+       initMethod = c("biased","consistent"),
 			 cenTS=NULL,verbose=FALSE,...)
 {
   #message("Enter carx.default.")
 	verbose <- verbose || options()$verbose
 	nObs <- length(y)
+  initMethod=match.arg(initMethod)
 
   finiteY <- which(is.finite(y))
 
@@ -135,7 +137,7 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 			return(NULL)
 		}
 		nX <- dim(x)[2]
-		externalVariable <- x
+		x <- x
 		if(all(x==1))
 			xIsOne <- TRUE
 		else
@@ -144,12 +146,12 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 	{
 		warning("x is null, I will set x = 1s, i.e., representing the intercept")
 		nX <- 1
-		externalVariable <- rep(1,nObs)
+		x <- rep(1,nObs)
 		xIsOne <- TRUE
 	}
 
   #check for finite rows in data and construct skipIndex
-  finiteRows <- (apply(externalVariable, 1, function(x){all(is.finite(x))}))
+  finiteRows <- (apply(x, 1, function(x){all(is.finite(x))}))
   if(!nonfiniteYAsCensored)
     finiteRows <- finiteRows & is.finite(y)
 
@@ -164,7 +166,7 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
   if(verbose) message("Skip index is constructed as ", paste(skipIndex,collapse=', '))
 	nSkip <- length(skipIndex)
 	ret = list(y = y,
-		   x = externalVariable,
+		   x = x,
 		   xIsOne = xIsOne,
 		   ci = ci,
 		   lcl = lcl,
@@ -259,7 +261,7 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 	}
 
 	updateTrend <- function(){
-		trend <<- externalVariable%*%prmtrX
+		trend <<- x%*%prmtrX
 	}
 
 	updateCovEta <- function(){
@@ -278,6 +280,8 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 		updateTrend()
 		for(idx in seq(1,nObs)[-skipIndex])
 		{
+		  #if(idx ==92 )
+		    #browser()
 			tmpCensorIndicator <- ci[idx:(idx-p)]
 			nCensored <- sum(abs(tmpCensorIndicator))
 			if(nCensored>0)
@@ -368,11 +372,13 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 		tmpX <- matrix(0,nObs-nSkip,nX)
 		index <- seq(1,nObs)[-skipIndex]
 		for(idx in 1:(nObs-nSkip)){
+		  #message("idx:",idx)
+		  #if(idx == 111) browser()
 			if (p >1){
-				tmpX[idx,] <- externalVariable[(index[idx]),] - prmtrAR %*% externalVariable[(index[idx]-1):(index[idx]-p),]
+				tmpX[idx,] <- x[(index[idx]),] - prmtrAR %*% x[(index[idx]-1):(index[idx]-p),]
 			}
 			else{
-				tmpX[idx,] <- externalVariable[(index[idx]),] - prmtrAR * externalVariable[(index[idx]-1):(index[idx]-p),]
+				tmpX[idx,] <- x[(index[idx]),] - prmtrAR * x[(index[idx]-1):(index[idx]-p),]
 			}
 		}
 		ret <- solve(t(tmpX) %*% tmpX, t(tmpX)%*%tmpY )
@@ -389,7 +395,7 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 		ret <- sum(vec^2)
 		tmpVec <- c(1,-prmtrAR)
 		for(i in idx){
-			ret <- ret + as.numeric( tmpVec%*%wkCov[i,,]%*%tmpVec )
+			ret <- ret + as.numeric( t(tmpVec)%*%wkCov[i,,]%*%tmpVec )
 		}
 		return( sqrt(ret/(nObs-nSkip)) )
 	}
@@ -439,6 +445,11 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 		sigmaEps <<- 1
 
 		eStepNaive()
+		
+		#tmporaly modify skipIndex
+		prevSkipIndex <- skipIndex
+		skipIndex <<- sort(unique(c(skipIndex,which(!is.finite(rowMeans(wkMean))))))
+		nSkip <<- length(skipIndex)
 		while(delta > tol && nIter < max.iter)
 		{
 			updateTrend() # needed since it is done to update the trend which is done in the eStep for our method
@@ -446,8 +457,67 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 			if(verbose) message(sprintf("Iter:%i, delta: %f, prmtr: %s", nIter, delta, toString(round(getPrmtr(),digits=4) ) ))
 			nIter <- nIter + 1
 		}
-		if(verbose) message(sprintf("Iter:%i, delta: %f, prmtr: %s \nParameter initialized\n", nIter-1, delta, toString(round(getPrmtr(),digits=4) ) ))
+		#if(verbose) message(sprintf("Iter:%i, delta: %f, prmtr: %s \nParameter initialized\n", nIter-1, delta, toString(round(getPrmtr(),digits=4) ) ))
+    if(verbose) message("Initialize parameters, done.")
+		skipIndex <<- skipIndex
+		nSkip <<- length(skipIndex)
 	}
+
+  initPrmtr2 <- function()
+  {
+    if(verbose)
+      message("Initialize parameters by consistent estimator.")
+    #message("Use least squares with instrumental variables to initialize parameters.")
+    if(any(is.finite(ucl)))
+       warning("Method cannot be used for data with right censoring.")
+
+    U <- NULL #record t such that y[t:(t-p)] are uncensored 
+    for(t in (1:nObs)[-skipIndex])
+    {
+      if(all(ci[t:(t-p)]==0))
+        U <- c(U,t)
+    }
+    if(is.null(U))
+      message("No consecutive p+1 uncensored observations in the series.")
+
+    nU <- length(U)
+    if(verbose) message("# of p+1 uncensored obs:", nU)
+    if(!xIsOne)
+    {
+      z <- matrix(nrow=nU,ncol=nX*(p+1)+p)
+      g <- matrix(nrow=nU,ncol=nX*(p+1)+p+1)
+      ghat <- matrix(nrow=nU,ncol=nX*(p+1)+p+1)
+      for(i in 1:nU)
+      {
+        t <- U[i]
+        z[i,] <- c(x[t,],y[(t-1):(t-p)],as.vector(t(x[(t-(1:p)),])))
+      }
+
+      uY <- y[U]
+      uYhat <- z%*%solve(t(z)%*%z,t(z)%*%uY)
+
+      h <- uY^2 - lcl[U]*uY
+
+      for( i in 1:nU)
+      {
+        g[i,] <- c((uY[i] - lcl[U[i]])*z[i,], 1)
+        ghat[i,] <- c((uYhat[i] - lcl[U[i]])*z[i,], 1)
+      }
+      #browser()
+      tmp <- solve(t(ghat)%*%g, t(ghat)%*%h)
+      prmtrX <<- tmp[1:nX]
+      prmtrAR <<- tmp[(nX+1):(nX+p)]
+      if(tmp[length(tmp)]>=0)
+        sigmaEps <<- sqrt(tmp[length(tmp)])
+      else
+        sigmaEps <<- NaN
+    }
+    else
+    {
+      stop("Not Implemented! for x=1")
+    }
+    if(verbose) message("Initialize parameters, done.")
+  }
 
 	exptdLogLik <- function()
 	{
@@ -501,12 +571,30 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 
 	# begin execution
 	resetWK()
+  fallBackToBiased <- FALSE
 	#message("initializing parameters")
 	if(needInit || noCensor )  # If no censoring, it is estimating an AR-X
-		initPrmtr(tol, max.iter)
+  {
+    if(initMethod == "biased") 
+      initPrmtr(tol, max.iter)
+    else
+    {
+      if(initMethod == "consistent") 
+        initPrmtr2()
+      if(!isStationaryAR(prmtrAR) | is.nan(sigmaEps))
+      {
+        if(verbose) message("Initial consistent estimator for AR parameter is not stationary, fall back to unbiased estimator")
+        initPrmtr(tol, max.iter)
+        fallBackToBiased <- TRUE
+      }
+    }
+  }
 	prmtrInit <- getPrmtr()
-	if(!noCensor)
-		estimatePrmtr(tol,max.iter)
+  if(verbose) message("Initial estimator: ",toString(round(prmtrInit,digits=4)))
+
+  #message("skipping true estimation!")
+  if(!noCensor)
+    estimatePrmtr(tol,max.iter)
 	setEstdPrmtr()
 
 	coeff <- c(prmtrXEstd,prmtrAREstd)
@@ -519,6 +607,7 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 	ret$prmtrX = prmtrXEstd
 	ret$prmtrAR = prmtrAREstd
 	ret$sigma = sigmaEpsEstd
+  ret$fallBackToBiased = fallBackToBiased
 
 	ret$censorRate = getCensorRate()
 	rnames <- c(names(coeff),"sigma")

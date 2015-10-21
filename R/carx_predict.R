@@ -64,7 +64,7 @@ predictARX <- function(y,x,prmtrX,prmtrAR,sigma,n.ahead,newxreg,CI.level=0.95)
 #' @return A list consisting of \code{fit}, \code{se.fit}, and \code{ci} representing the predictions,
 #' standard errors of predictions, and confidence intervals respectively.
 #' @export
-predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,na.action=NULL,...)
+predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,na.action=NULL,useSimulatedResidual=F,...)
 {
 
   if( n.ahead < 1)
@@ -79,7 +79,9 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
     if(is.null(newxreg))
       stop("ERROR: newxreg supplied is NULL, but the x data in model is not ones.")
 
-    newxreg <- as.matrix(newxreg)
+    #browser()
+    if(is.vector(newxreg)) 
+      newxreg <- as.matrix(newxreg)
     if(dim(newxreg)[1] != n.ahead)
         stop("New data doesn't have the same row of data as n.ahead.")
 
@@ -94,26 +96,23 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
     }
     else
     {
-      if(dim(newxreg)[2] != dim(object$x)[2])
+      message("I am trying to combine the formula and your supplied data.")
+      cfml <- fml
+      newxreg <- as.data.frame(newxreg)
+      if(!is.null(object$outlier.indices))
       {
-        message("I am trying to combine the formula and your supplied data.")
-        cfml <- fml
-        newxreg <- as.data.frame(newxreg)
-        if(!is.null(object$outlier.indices))
+        #add outlier variables to the data
+        for(idx in object$outlier.indices)
         {
-          #add outlier variables to the data
-          for(idx in object$outlier.indices)
-          {
-            newVar = paste0(object$outlier.prefix,idx)
-            nms <- names(newxreg)
-            newxreg$newVarByChao <- numeric(n.ahead)
-            names(newxreg) <- c(nms,newVar)
-          }
+          newVar = paste0(object$outlier.prefix,idx)
+          nms <- names(newxreg)
+          newxreg$newVarByChao <- numeric(n.ahead)
+          names(newxreg) <- c(nms,newVar)
         }
-        cfml <- nlme::getCovariateFormula(cfml)
-        mf <- stats::model.frame(formula=cfml,data=as.data.frame(newxreg),na.action=NULL)
-        newxreg <- stats::model.matrix(attr(mf,"terms"),data=mf)
       }
+      cfml <- nlme::getCovariateFormula(cfml)
+      mf <- stats::model.frame(formula=cfml,data=as.data.frame(newxreg),na.action=NULL)
+      newxreg <- stats::model.matrix(attr(mf,"terms"),data=mf)
     }
   }
 
@@ -140,16 +139,16 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
 
 	nStart <- nObs - iStart + 1
 
-	if(nStart == p)
+	if(nStart == p & !useSimulatedResidual)
 	{
-	  message("latest p observations are not censored")
+	  message("Latest p observations are not censored")
     predictARX(object$y,object$x,object$prmtrX,
                object$prmtrAR,object$sigma,
                n.ahead,newxreg,CI.level=CI.level)
   }
 	else
 	{
-	  message("latest p observations are censored")
+	  message("latest p observations are censored or we'll use simulated residuals")
 	  eta <- object$y[iStart:nObs] - object$x[iStart:nObs,]%*%object$prmtrX
   	eta <- c(eta, rep(0,n.ahead))
     yPred <- c(object$y[iStart:nObs], rep(0,n.ahead))
@@ -159,34 +158,43 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
 		nCensored <- sum(tmpCensorIndicator!=0)
     covEta <- computeCovAR(object$prmtrAR, object$sigma, nStart)
     trend <- as.vector(newxreg[nStart:1,]%*%object$prmtrX)
-    if( nCensored < nStart )
+
+    if(nCensored > 0)
     {
-      conditionalIndex <- which(tmpCensorIndicator==0)
-      tmpY <- object$y[nObs:iStart][conditionalIndex]
-      cdist <- conditionalDistMvnorm(tmpY, conditionalIndex,trend,covEta)
-      tmpMean <- cdist$'mean'
-      tmpVar <- cdist$'var'
-    }else
-    {
-      tmpMean <- trend
-      tmpVar <- covEta
+      if( nCensored < nStart )
+      {
+        conditionalIndex <- which(tmpCensorIndicator==0)
+        tmpY <- object$y[nObs:iStart][conditionalIndex]
+        cdist <- conditionalDistMvnorm(tmpY, conditionalIndex,trend,covEta)
+        tmpMean <- cdist$'mean'
+        tmpVar <- cdist$'var'
+      }else
+      {
+        tmpMean <- trend
+        tmpVar <- covEta
+      }
+      tmpLower <- rep(-Inf,length = nCensored)
+      tmpUpper <- rep(Inf,length = nCensored)
+      censored <- tmpCensorIndicator[tmpCensorIndicator!=0]
+      tmpLower[censored>0] <- object$ucl[nObs:iStart][tmpCensorIndicator>0]
+      tmpUpper[censored<0] <- object$lcl[nObs:iStart][tmpCensorIndicator<0]
+      yCensored <- tmvtnorm::rtmvnorm(nRep,tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
     }
 
-    tmpLower <- rep(-Inf,length = nCensored)
-    tmpUpper <- rep(Inf,length = nCensored)
-    censored <- tmpCensorIndicator[tmpCensorIndicator!=0]
-    tmpLower[censored>0] <- object$ucl[nObs:iStart][tmpCensorIndicator>0]
-    tmpUpper[censored<0] <- object$lcl[nObs:iStart][tmpCensorIndicator<0]
+    if(useSimulatedResidual)
+    {
+      simRes <- residuals(object,type="raw")
+      eps <- matrix(sample(simRes,nRep*n.ahead,replace=T),nrow=nRep,ncol=n.ahead)
+    }else
+      eps <- matrix(stats::rnorm(nRep*n.ahead,0,object$sigma),nrow=nRep,ncol=n.ahead)
 
-    yCensored <- tmvtnorm::rtmvnorm(nRep,tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
-    eps <- matrix(stats::rnorm(nRep*n.ahead,0,object$sigma),nrow=nRep,ncol=n.ahead)
     etaFuture <- matrix(nrow=nRep,ncol=nStart+n.ahead)
 
     for(iRep in 1:nRep)
     {
       etaFuture[iRep,nStart:1] <- eta[nStart:1]
-      etaFuture[iRep,nStart:1][tmpCensorIndicator!=0] <- yCensored[iRep,] - trend[tmpCensorIndicator!=0]
-
+      if(nCensored>0) #censoring exists, use simulated values for censored y's.
+        etaFuture[iRep,nStart:1][tmpCensorIndicator!=0] <- yCensored[iRep,] - trend[tmpCensorIndicator!=0]
       for(i in 1:n.ahead)
         etaFuture[iRep,nStart+i] <- etaFuture[iRep,(nStart+i-1):(nStart+i-p)]%*%object$prmtrAR + eps[iRep,i]
     }

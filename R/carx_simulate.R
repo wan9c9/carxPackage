@@ -15,14 +15,22 @@
 #' @examples
 #' dat = carxSim()
 
-carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL)
+carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL,inno.dist=c("normal","t"),t.df=1)
 {
 	p <- length(prmtrAR)
 	nX <- length(prmtrX)
+  inno.dist = match.arg(inno.dist)
 
 	if(!is.null(seed))
 		set.seed(seed)
-	eps <- stats::rnorm(nObs,0, sigmaEps)
+  if(inno.dist == "normal") 
+    eps <- stats::rnorm(nObs,0, sigmaEps)
+  else
+  {
+    if(inno.dist == "t")
+      eps <- stats::rt(nObs,t.df)
+  }
+
 
 	if(is.null(x))
   {
@@ -37,11 +45,30 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps
 	eta <- numeric(nObs)
 	y <- numeric(nObs)
 
-  covAr <- computeCovAR(prmtrAR,sigmaEps,lag=p)
-  eta[1:p] <- as.vector(mvtnorm::rmvnorm(1,sigma=covAr))
 
+  if(inno.dist == "normal") 
+  {
+    covAr <- computeCovAR(prmtrAR,sigmaEps,lag=p)
+    eta[1:p] <- as.vector(mvtnorm::rmvnorm(1,sigma=covAr))
+  }
+  else
+  {
+    if(inno.dist == "t")
+    {
+      nPreSample <- 1000
+      tmpEps <- stats::rt(nPreSample,t.df)
+      tmpEta <- rep(0,nPreSample)
+      for(i in (p+1):nPreSample)
+        tmpEta[i] <- prmtrAR%*%tmpEta[(i-1):(i-p)] + tmpEps[i]
+      eta[1:p] <- tmpEta[(nPreSample-p+1):nPreSample]
+    }
+  }
+
+
+  #assign first p values
 	y[1:p] <- trend[1:p] + eta[1:p]
 
+  #iterate
 	for(i in (p+1):nObs){
 		eta[i] <- eta[(i-1):(i-p)] %*% prmtrAR + eps[i]
 		y[i] <- trend[i] + eta[i]
@@ -57,7 +84,9 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps
 		    ucl=ucl,
 		    x = x
 		    )
-  ret <- data.frame(ret)
+  #browser()
+  ret <- try(data.frame(ret,row.names=NULL),silent=TRUE)
+  #assign("last.warning", NULL, envir = baseenv())
   colnames(ret) <- c("y","ci","lcl","ucl",colnames(x))
 	ret
 }
@@ -75,7 +104,7 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps
 #' @export
 #' @examples
 #' cts = carxSimCenTS()
-carxSimCenTS <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL, value.name = 'y', end.date=Sys.Date())
+carxSimCenTS <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL, value.name = 'y', end.date=Sys.Date(),inno.dist=c("normal","t"),t.df=1)
 {
   ret <- carxSim(nObs,prmtrAR, prmtrX, sigmaEps, lcl, ucl, x, seed)
   #ret is a data.frame

@@ -29,6 +29,18 @@ conditionalDistMvnorm <- function(y, conditionalIndex, meanVec, varMat)
 	return (list('mean'=mNew,'var' = vNew))
 }
 
+isStationaryAR <- function(arPrmtr)
+{
+  roots <- polyroot(c(1,-arPrmtr))
+	#print(roots)
+	if(any(abs(roots)<=1))
+    FALSE
+  else
+    TRUE
+}
+	
+
+
 #' Compute the covariance matrix of some observations of the AR model
 #'
 #' Compute the covariance matrix of \deqn{(\eta_t,...,\eta_{t-lag})} of the AR model.

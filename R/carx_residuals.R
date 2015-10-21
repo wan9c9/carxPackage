@@ -85,7 +85,11 @@ residuals.carx <- function(object,type=c("raw","pearson"),seed=0,...)
 		ysim <- tmvtnorm::rtmvnorm(1, mean=tmpMean, sigma=tmpVar, lower=tmpLower, upper=tmpUpper,algorithm="gibbs")
 		y[idx] <- ysim[1]
   }
-	m2 <- carx(y, object$x, rep(0,nObs), NULL, NULL, object$p, CI.compute=FALSE)
+	m2 <- carx(y, object$x, rep(0,nObs), NULL, NULL, object$p,
+	           prmtrAR=object$prmtrAR,
+	           prmtrX = object$prmtrX,
+	           sigmaEps = object$sigmaEps,
+	           CI.compute=FALSE)
 	#print(m2)
 	rsdl <- numeric(nObs)
 	eta <- y - object$x%*%m2$prmtrX
