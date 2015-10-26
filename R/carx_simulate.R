@@ -15,8 +15,9 @@
 #' @examples
 #' dat = carxSim()
 
-carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL,inno.dist=c("normal","t"),t.df=1)
+carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL,inno.dist=c("normal","t"),t.df=5)
 {
+  stopifnot(t.df>2)
 	p <- length(prmtrAR)
 	nX <- length(prmtrX)
   inno.dist = match.arg(inno.dist)
@@ -28,7 +29,10 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps
   else
   {
     if(inno.dist == "t")
+    {
       eps <- stats::rt(nObs,t.df)
+      eps <- eps*sigmaEps/(sqrt(t.df/(t.df-2)))
+    }
   }
 
 
@@ -57,6 +61,7 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps
     {
       nPreSample <- 1000
       tmpEps <- stats::rt(nPreSample,t.df)
+      tmpEps <- tmpEps*sigmaEps/(sqrt(t.df/(t.df-2)))
       tmpEta <- rep(0,nPreSample)
       for(i in (p+1):nPreSample)
         tmpEta[i] <- prmtrAR%*%tmpEta[(i-1):(i-p)] + tmpEps[i]
@@ -104,7 +109,7 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps
 #' @export
 #' @examples
 #' cts = carxSimCenTS()
-carxSimCenTS <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL, value.name = 'y', end.date=Sys.Date(),inno.dist=c("normal","t"),t.df=1)
+carxSimCenTS <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL, value.name = 'y', end.date=Sys.Date(),inno.dist=c("normal","t"),t.df=5)
 {
   ret <- carxSim(nObs,prmtrAR, prmtrX, sigmaEps, lcl, ucl, x, seed)
   #ret is a data.frame
