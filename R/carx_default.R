@@ -39,7 +39,8 @@ carx <- function(y,...) UseMethod("carx")
 carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
        p=1,prmtrX=NULL,prmtrAR=NULL,sigmaEps=NULL,
        nonfiniteYAsCensored=TRUE,
-			 tol=1e-4,max.iter=500,CI.compute=FALSE,CI.level=0.95,b=1000,
+       addMu=TRUE,
+			 tol=1e-4,max.iter=500,CI.compute=FALSE,CI.level=0.95,b=1000,brobust=FALSE,
        initMethod = c("biased","consistent"),
 			 cenTS=NULL,verbose=FALSE,...)
 {
@@ -144,14 +145,19 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 			xIsOne <- FALSE
 	}else
 	{
-		warning("x is null, I will set x = 1s, i.e., representing the intercept")
-		nX <- 1
-		x <- rep(1,nObs)
-		xIsOne <- TRUE
+    x <- as.matrix(rep(1,nObs))
+    nX <- 1
+    xIsOne <- TRUE
 	}
+	xValid <- TRUE
+	if(xIsOne & !addMu)
+	  xValid <- FALSE
 
   #check for finite rows in data and construct skipIndex
-  finiteRows <- (apply(x, 1, function(x){all(is.finite(x))}))
+  if(!is.null(x)) 
+    finiteRows <- (apply(x, 1, function(x){all(is.finite(x))}))
+  else
+    finiteRows <- rep(TRUE,length(y))
   if(!nonfiniteYAsCensored)
     finiteRows <- finiteRows & is.finite(y)
 
@@ -256,12 +262,15 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 	}
 
 	getEstdPrmtr <- function(){
-		ret <- c(prmtrXEstd, prmtrAREstd, sigmaEpsEstd)
+	  if(xValid) 
+	    ret <- c(prmtrXEstd, prmtrAREstd, sigmaEpsEstd)
+	  else
+	    ret <- c(prmtrAREstd, sigmaEpsEstd)
 		return(ret)
 	}
 
 	updateTrend <- function(){
-		trend <<- x%*%prmtrX
+      trend <<- x%*%prmtrX
 	}
 
 	updateCovEta <- function(){
@@ -281,7 +290,6 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 		for(idx in seq(1,nObs)[-skipIndex])
 		{
 		  #if(idx ==92 )
-		    #browser()
 			tmpCensorIndicator <- ci[idx:(idx-p)]
 			nCensored <- sum(abs(tmpCensorIndicator))
 			if(nCensored>0)
@@ -372,8 +380,6 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 		tmpX <- matrix(0,nObs-nSkip,nX)
 		index <- seq(1,nObs)[-skipIndex]
 		for(idx in 1:(nObs-nSkip)){
-		  #message("idx:",idx)
-		  #if(idx == 111) browser()
 			if (p >1){
 				tmpX[idx,] <- x[(index[idx]),] - prmtrAR %*% x[(index[idx]-1):(index[idx]-p),]
 			}
@@ -401,6 +407,7 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 	}
 
 	mStep <- function(){
+
     prevPrmtr <- c(prmtrX,prmtrAR,sigmaEps)
 		delta <- 0
 
@@ -408,9 +415,12 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 		delta <- delta + sum(abs(newPrmtrAR - prmtrAR))
 		prmtrAR <<- newPrmtrAR
 
-		newPrmtrEV <- updatePrmtrEV()
-		delta <- delta + sum(abs(newPrmtrEV - prmtrX))
-		prmtrX <<- newPrmtrEV
+    if(xValid)
+    {
+      newPrmtrEV <- updatePrmtrEV()
+      delta <- delta + sum(abs(newPrmtrEV - prmtrX))
+      prmtrX <<- newPrmtrEV
+    }
 
 		newSigmaEps <- updateSigmaEps()
 		delta <- delta + abs(newSigmaEps - sigmaEps)
@@ -503,7 +513,6 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
         g[i,] <- c((uY[i] - lcl[U[i]])*z[i,], 1)
         ghat[i,] <- c((uYhat[i] - lcl[U[i]])*z[i,], 1)
       }
-      #browser()
       tmp <- solve(t(ghat)%*%g, t(ghat)%*%h)
       prmtrX <<- tmp[1:nX]
       prmtrAR <<- tmp[(nX+1):(nX+p)]
@@ -525,9 +534,14 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 		val
 	}
 
-	bootstrapSample <- function()
+
+
+	bootstrapSample <- function(epsPool)
 	{
-		eps <- stats::rnorm(nObs,0, sigmaEps)
+    if(brobust) 
+      eps <- sample(epsPool,nObs)
+    else
+      eps <- stats::rnorm(nObs,0, sigmaEps)
 
 		updateTrend()
 
@@ -545,15 +559,23 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 
 	bootstrapCI <- function(CI.level,b)
 	{
+    
 		#message(sprintf('Bootstraping CI'))
 		yOriginal <- y #copy y as it will be overwritten
+    
+    browser()
+    if(brobust)
+      epsPool <- residuals.carx(ret,type="raw")
+    else
+      epsPool <- NULL
+
 		tmpResult <- matrix(0,b,getNPrmtr())
 		#pb <- txtProgressBar(1,b,style=3)
 		for(i in 1:b){
 			#message(sprintf('Bootstraping CI %i/%i',i,b))
 			#setTxtProgressBar(pb,i)
 			setInitPrmtrForBootstrap()
-			bootstrapSample()
+			bootstrapSample(epsPool)
 			resetWK()
 			estimatePrmtr(tol,max.iter)
 			tmpResult[i,] <- getPrmtr()
@@ -597,10 +619,24 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
     estimatePrmtr(tol,max.iter)
 	setEstdPrmtr()
 
-	coeff <- c(prmtrXEstd,prmtrAREstd)
-	xnames <- colnames(x)
-	if(is.null(xnames))
-		xnames <- paste0('X',1:dim(x)[2])
+
+	if(xValid)	 
+	  coeff <- c(prmtrXEstd,prmtrAREstd)
+	else
+	  coeff <- prmtrAREstd
+	if(xValid)
+	{
+	  xnames <- colnames(x)
+	  if( is.null(xnames) )
+	  {
+  	  if(xIsOne)
+  	    xnames <- c("mu")
+    	else
+    		xnames <- paste0('X',1:dim(x)[2])
+	  }
+	}
+	else
+	  xnames <- NULL
 	names(coeff) <- c(xnames,paste0('AR',1:p))
 
 	ret$coefficients = coeff
