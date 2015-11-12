@@ -7,7 +7,7 @@
 conditionalDistMvnorm(y, conditionalIndex, meanVec, varMat)
 }
 \arguments{
-\item{y}{a vector to be conditioned on.}
+\item{y}{the vector of the known values to be conditioned on.}
 
 \item{conditionalIndex}{the index to be conditioned on.}
 
@@ -21,8 +21,8 @@ a list consisting of 'mean' and 'var' representing the conditional mean and vari
 \description{
 Calculate the conditional mean & variance of a sub-vector
 of a vector given the rest of known elements, following multivariate normal distribution.
-This function calculates the conditional mean & variance of a multivariate normal distribution.
-with (meanVec, varMat), conditional on y at indices conditionalIndex.
+This function calculates the conditional mean & variance of a multivariate normal distribution,
+with (\code{meanVec}, \code{varMat}), conditional on y at the indices \code{conditionalIndex}.
 }
 \examples{
 conditionalDistMvnorm(c(-0.5,0.5), c(2,4), c(1,2,3,4),matrix(

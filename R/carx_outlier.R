@@ -1,9 +1,10 @@
 
-#' Detecting the outlier of the response data modelled by \code{carx}
+#' Detecting outliers in a  \code{carx} model.
 #'
-#' Add one element to the vector of outlier indices, i.e, the \code{outlier.indices} of the object returned, if an outlier is detected.
+#' This is an internal function. It tests for additional outlier one at a time, for each time point, as described in Wang and Chan (2015), adjusted for multiplicity of testing. If the test result is significant, the function augments the location of the most significant outlier to the vector of outlier indices, i.e, the \code{outlier.indices} in the object returned by the function.
 #' @param object a \code{carx} object
-#' @return a \code{object} with updated information. If any outlier is detected, the return object will have a attribute \code{outlier.indices} denoting the indices of outliers.
+#' @keywords internal
+#' @return a possibly updated \code{object} which will have an attribute \code{outlier.indices} denoting the indices of outliers with the new index of outlier appended, if any outlier is detected.
 ot.carx <- function(object)
 {
 	#message("detecting outliers")
@@ -88,26 +89,30 @@ ot.carx <- function(object)
 
 #' S3 method to detect outlier of a \code{carx} object
 #'
-#' Detect all outliers of a \code{carx} object, as opposed to \code{\link{ot.carx}} which detects only one outliers
+#' Detect all outliers of a \code{carx} object.
 #' @inheritParams outlier.carx
 #' @return an updated \code{carx} object. If any outlier is detected, its index will be stored in the \code{outlier.indices} attribute of the return object, and prefix for variable name is stored in the \code{outlier.prefix} attribute. Note that if the original object is fitted through a formula interface, the formula will also be updated.
 #' @export
 #' @seealso \code{\link{outlier.carx}}.
 #'
-outlier <- function(object,outlier.prefix="OI_",seed=0) UseMethod("outlier")
+outlier <- function(object,outlier.prefix="OI_",seed=NULL) UseMethod("outlier")
 
 #' Detect all outliers of a \code{carx} object
 #'
-#' Detect all outliers of a \code{carx} object, as opposed to \code{\link{ot.carx}} which detects only one outliers
+#' Detect all outliers of a \code{carx} object and update the model if any outlier is detected.
+#' It tests for the presence of outliers one at a time, for each time point, adjusted for multiplicity of testing, as described in Wang and Chan (2015).
 #' @param object a \code{carx} object.
 #' @param outlier.prefix the prefix used to construct variable name for indicator variables representing the detected outliers, default = "OI_".
-#' @param seed the seed for randon number generator, default=0.
+#' @param seed the seed for randon number generator, default=\code{NULL}.
 #' @return an updated \code{carx} object. If any outlier is detected, its index will be stored in the \code{outlier.indices} attribute of the return object, and prefix for variable name is stored in the \code{outlier.prefix} attribute. Note that if the original object is fitted through a formula interface, the formula will also be updated.
+#' @references
+#' Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables." Submitted.
+#
 #' @export
-outlier.carx <- function(object,outlier.prefix="OI_",seed=0)
+outlier.carx <- function(object,outlier.prefix="OI_",seed=NULL)
 {
   message("Detecting outliers.")
-  set.seed(seed)
+  if(!is.null(seed)) set.seed(seed)
   newObj = object
   newFormula = NULL
   tryCatch({newFormula=formula(object)},error=function(e){newFormula=NULL})

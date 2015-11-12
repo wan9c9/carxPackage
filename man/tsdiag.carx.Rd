@@ -2,7 +2,7 @@
 % Please edit documentation in R/carx_plots.R
 \name{tsdiag.carx}
 \alias{tsdiag.carx}
-\title{Show diagnostic plot for a \code{carx} object}
+\title{Show diagnostic plots for a \code{carx} object}
 \usage{
 \method{tsdiag}{carx}(object, gof.lag, col = "red", omit.initial = TRUE,
   mfrow = c(4, 1), main = "Diagnostic Plots", ...)
@@ -26,6 +26,12 @@
 none.
 }
 \description{
-Show diagnostic plot for a \code{carx} object
+Four diagnostic plots will be shown, which are
+\itemize{
+\item{the time series plot of the residuals,}
+\item{the residuals versus the fitted values,}
+\item{the ACF plot of the residuals, and }
+\item{the Ljung-Box test statistics versus the lags.}
+}
 }
 

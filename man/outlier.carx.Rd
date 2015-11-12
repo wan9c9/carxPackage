@@ -4,19 +4,23 @@
 \alias{outlier.carx}
 \title{Detect all outliers of a \code{carx} object}
 \usage{
-\method{outlier}{carx}(object, outlier.prefix = "OI_", seed = 0)
+\method{outlier}{carx}(object, outlier.prefix = "OI_", seed = NULL)
 }
 \arguments{
 \item{object}{a \code{carx} object.}
 
 \item{outlier.prefix}{the prefix used to construct variable name for indicator variables representing the detected outliers, default = "OI_".}
 
-\item{seed}{the seed for randon number generator, default=0.}
+\item{seed}{the seed for randon number generator, default=\code{NULL}.}
 }
 \value{
 an updated \code{carx} object. If any outlier is detected, its index will be stored in the \code{outlier.indices} attribute of the return object, and prefix for variable name is stored in the \code{outlier.prefix} attribute. Note that if the original object is fitted through a formula interface, the formula will also be updated.
 }
 \description{
-Detect all outliers of a \code{carx} object, as opposed to \code{\link{ot.carx}} which detects only one outliers
+Detect all outliers of a \code{carx} object and update the model if any outlier is detected.
+It tests for the presence of outliers one at a time, for each time point, adjusted for multiplicity of testing, as described in Wang and Chan (2015).
+}
+\references{
+Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables." Submitted.
 }
 

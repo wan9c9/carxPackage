@@ -12,11 +12,11 @@ cenTS(value, order.by, lcl = NULL, ucl = NULL, ci = NULL,
 
 \item{order.by}{the index vector, must be a vector of time/date.}
 
-\item{lcl}{the vector of lower censoring limits, or a single numeric representing constant limit, default = NULL indicating no lower limit.}
+\item{lcl}{the vector of lower censoring limits, or a single numeric representing constant limit, default = \code{NULL} indicating no lower limit.}
 
-\item{ucl}{the vector of upper censoring limits, or a single numeric representing constant limit, default = NULL indicating no upper limit.}
+\item{ucl}{the vector of upper censoring limits, or a single numeric representing constant limit, default = \code{NULL} indicating no upper limit.}
 
-\item{ci}{the vector of censoring indicators, value should be -1, 0, 1 if the observation is left censored, observed, and right censored respectively. Default = NULL, in which case, the function will compute \code{ci} by \code{value}, \code{lcl} and \code{ucl}. If \code{ci} is not NULL, the function will check the consistency of the data, assuming the observed values less than or equal to censoring limits are censored, and are observed otherwise.}
+\item{ci}{the vector of censoring indicators, each value should be -1, 0, and 1 if the corresponding observation is left censored, observed, and right censored respectively. Default = NULL, in which case, the function will compute \code{ci} by \code{value}, \code{lcl} and \code{ucl}. If \code{ci} is not NULL, the function will check the consistency of the data, assuming the observed values less (greater) than or equal to left (right) censoring limits are censored, and are observed otherwise. The function will stop if inconsistent results are found.}
 
 \item{value.name}{the name of the value, default = "value".}
 
@@ -28,7 +28,7 @@ a \code{cenTS} object, all censored observations will be assigned as the corresp
 \description{
 Create a censored time series object of \code{cenTS} class. For each series, it consists of the values,
 the name of which can be specified by the user, and by default is "value",
- and lower/upper censoring limit denoted by \code{lcl} and \code{ucl} respectively. The vector of censoring limits, i.e., \code{ci}, is also in in the object.
+ and the vectors of lower/upper censoring limits denoted by \code{lcl} and \code{ucl} respectively. The vector of censoring indicators, i.e., \code{ci}, is also in in the object.
  Additional related variables can be stored and provided in the construction function, whose names are stored in \code{xreg}. All variable values are assumed to be of the same length of and thus aligned with the main censored time series. \code{cenTS} inherits from \link[xts]{xts}.
 }
 \examples{

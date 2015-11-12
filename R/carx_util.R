@@ -2,10 +2,10 @@
 #'
 #' Calculate the conditional mean & variance of a sub-vector
 #' of a vector given the rest of known elements, following multivariate normal distribution.
-#' This function calculates the conditional mean & variance of a multivariate normal distribution.
-#' with (meanVec, varMat), conditional on y at indices conditionalIndex.
+#' This function calculates the conditional mean & variance of a multivariate normal distribution,
+#' with (\code{meanVec}, \code{varMat}), conditional on y at the indices \code{conditionalIndex}.
 #'
-#' @param y a vector to be conditioned on.
+#' @param y the vector of the known values to be conditioned on.
 #' @param conditionalIndex the index to be conditioned on.
 #' @param meanVec the mean vector the joint multivariate normal distribution.
 #' @param varMat the variance-covariance matrix of the joint multivariate normal distribution.
@@ -38,17 +38,18 @@ isStationaryAR <- function(arPrmtr)
   else
     TRUE
 }
-	
+
 
 
 #' Compute the covariance matrix of some observations of the AR model
 #'
-#' Compute the covariance matrix of \deqn{(\eta_t,...,\eta_{t-lag})} of the AR model.
+#' Compute the covariance matrix of \eqn{(\eta_t,...,\eta_{t-lag})} of the AR model.
 #' @param arPrmtr the parameter of the AR model.
-#' @param sigmaEps the standard deviation of the residuals of the AR model.
-#' @param lag number of lags to be computed, including lag at zero.
-#' @return the covariance matrix needed.
-computeCovAR <- function(arPrmtr, sigmaEps, lag=length(arPrmtr)+1)
+#' @param sigma the standard deviation of the innovations of the AR model.
+#' @param lag the number of lags to be computed, including lag at zero.
+#' @return the covariance matrix.
+#' @export
+computeCovAR <- function(arPrmtr, sigma, lag=length(arPrmtr)+1)
 {
 	roots <- polyroot(c(1,-arPrmtr))
 	#print(roots)
@@ -72,7 +73,7 @@ computeCovAR <- function(arPrmtr, sigmaEps, lag=length(arPrmtr)+1)
 		}
 	}
 
-	v <- sigmaEps^2/(1-arPrmtr%*%val[2:(length(arPrmtr)+1)])
+	v <- sigma^2/(1-arPrmtr%*%val[2:(length(arPrmtr)+1)])
 	mat <- v[1,1]*mat
 	return(mat)
 }

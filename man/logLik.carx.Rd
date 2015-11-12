@@ -2,7 +2,7 @@
 % Please edit documentation in R/carx_default.R
 \name{logLik.carx}
 \alias{logLik.carx}
-\title{Return the quasi-log-likelihood of a \code{carx} object}
+\title{The quasi-log-likelihood of a \code{carx} object}
 \usage{
 \method{logLik}{carx}(object, ...)
 }
@@ -15,6 +15,6 @@
 the quasi-log-likelihood.
 }
 \description{
-Return the quasi-log-likelihood of a \code{carx} object
+The quasi-log-likelihood of a \code{carx} object
 }
 

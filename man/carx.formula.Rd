@@ -2,22 +2,25 @@
 % Please edit documentation in R/carx_default.R
 \name{carx.formula}
 \alias{carx.formula}
-\title{Provide a simple formula interface to the \code{carx} method}
+\title{A formula interface to the \code{carx} method}
 \usage{
 \method{carx}{formula}(formula, data = list(), ...)
 }
 \arguments{
 \item{formula}{the formula.}
 
-\item{data}{the data, can be a \code{list}, \code{data.frame}, or a \code{cenTS} object.}
+\item{data}{the data consisting of the \code{y}, \code{x}, \code{lcl},\code{ci}, and \code{ucl}, can be a \code{list}, \code{data.frame}, or a \code{\link{cenTS}} object.}
 
 \item{...}{other arguments supplied to \code{\link{carx.default}}.}
 }
 \description{
-This interface will use the supplied \code{formula} and data provided by \code{data} and other arguments in \code{...} to invoke the \code{carx.default} method.
+This interface will use the supplied \code{formula} and data provided by \code{data} and other arguments in \code{...} to invoke the \code{carx.default} method. This is the preferred way of calling the \code{carx.default} function. Also, it is advised to create a \code{cenTS} object with \code{y}, \code{x}, \code{lcl},\code{ci}, and \code{ucl}.
 }
 \examples{
 dat = carxSim(nObs=100,seed=0)
 model0 <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+}
+\seealso{
+\code{\link{cenTS}} for how to construct a \code{cenTS} object.
 }
 

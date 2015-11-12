@@ -2,7 +2,7 @@
 % Please edit documentation in R/carx_select.R
 \name{carxSelect}
 \alias{carxSelect}
-\title{Select the best CARX model from a variety of formulas with maximal AR order by AIC}
+\title{Select the CARX model by AIC from different combinations of formulas and AR orders}
 \usage{
 carxSelect(formulas, max.ar, data = list(), detect.outlier = F, ...)
 }
@@ -13,19 +13,23 @@ carxSelect(formulas, max.ar, data = list(), detect.outlier = F, ...)
 
 \item{data}{the data for CARX.}
 
-\item{detect.outlier}{logical to determine if outlier detection is performed before the AIC for a particular model formula is computed, default = \code{FALSE}.}
+\item{detect.outlier}{logical to determine if outlier detection is performed before the AIC for a particular model formula an AR order is computed, default = \code{FALSE}.}
 
-\item{...}{other arguments to be supplied, if not null, it will be call with the selected model and data. Examples include {CI.compute=TRUE}, which will cause the function to re-estimate the model with confidence intervals computed, as in the selection part, the confidence interval is not computed.}
+\item{...}{other arguments to be supplied, if not null, it will be called with the selected model and data. Examples include {CI.compute=TRUE}, which will cause the function to re-estimate the model with confidence intervals computed, as in the selection part, the confidence interval is not computed.}
 }
 \value{
 a list consisting of:
 \itemize{
 \item{\code{fitted}}{ the fitted CARX object of the model with the smallest AIC.}
-\item{\code{aicMat}}{ the matrix of AIC where rows correspond to the model formulas and columns correspond to AR order.}
+\item{\code{aicMat}}{ the matrix of AIC where rows correspond to the model formulas and columns correspond to AR orders.}
 }
 }
 \description{
-Select the best CARX model from a formula or a list of formulas with maximal AR order by AIC.
+This function selects the CARX model by AIC from a formula or a list of formulas with maximal AR order.
+The model specification is supplied by \code{formulas} which can be either a formula or a list of formulas.
+For each formula, the function will estimate the models with AR orders from 1 to \code{max.ar} inclusive.
+If \code{detect.outlier=TRUE}, outlier detection will be performed for each combination of formula and AR order.
+The function returns a \code{list} which consists of: 1) a \code{aicMat} which is a matrix of AIC where each row contains AICs of the models a specific formula with AR orders from 1 to \code{mar.ar} (after outlier detection if enabled); 2) \code{fitted} which is the fitted object of the selected model.
 }
 \examples{
 dataSim <- carxSimCenTS(nObs=100)

@@ -2,7 +2,7 @@
 % Please edit documentation in R/carx_residuals.R
 \name{residuals.carx}
 \alias{residuals.carx}
-\title{Compute the simulated residuals of a fitted \code{carx} object}
+\title{Residuals of a fitted \code{carx} object}
 \usage{
 \method{residuals}{carx}(object, type = c("raw", "pearson"), seed = 0, ...)
 }
@@ -10,7 +10,7 @@
 \item{object}{a fitted \code{carx} object.}
 
 \item{type}{a string indicates which type of residual is to be returned.
-"raw" returns the simulated residuals;
+"raw" returns the (simulated) residuals;
 "pearson" returns the raw residuals divided by estimated standard error of the residuals.}
 
 \item{seed}{the seed for random number generator.}
@@ -21,6 +21,16 @@
 the simulated residuals.
 }
 \description{
-Compute the simulated residuals of a fitted \code{carx} object
+This function computes residuals of fitted \code{carx} object. When no censoring is present, the ordinary residuals will be computed, otherwise, the simulated residuals (Gourieroux, Monfort, Renault, and Trognon 1987) of a fitted \code{carx} object will be computed,  as suggested in Wang and Chan (2015).
+}
+\details{
+The simulated residuals are constructed as follows.
+ First, impute each unobserved  \eqn{Y_t^*} by a realization from the conditional distribution \eqn{D(Y_t^*|\{(Y_s,X_s)\}_{s=1}^t)}, evaluated at the parameter estimate.
+ Then, refit the model with \eqn{(Y_t^* , X_t)} so obtained, via conditional maximum likelihood; the residuals from the latter model are the simulated residuals \eqn{\varepsilon_t}.
+}
+\references{
+Gourieroux C, Monfort A, Renault E, Trognon A (1987). "Simulated residuals." Journal of Econometrics, 34(1), 201-252.
+
+Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables." Submitted.
 }
 

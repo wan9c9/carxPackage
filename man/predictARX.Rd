@@ -17,15 +17,16 @@ predictARX(y, x, prmtrX, prmtrAR, sigma, n.ahead, newxreg, CI.level = 0.95)
 
 \item{sigma}{innovation standard deviation.}
 
-\item{n.ahead}{The number of steps ahead to predict, default = 1.}
+\item{n.ahead}{the number of steps ahead to predict, default = 1.}
 
-\item{newxreg}{The new observations for the coverates \code{x}.
+\item{newxreg}{the new observations for the coverates \code{x}, default={NULL}.
 If there is no covariate, the value can be assigned to be \code{NULL}.
-Otherwise, a matrix of new observations is required to compute predictions.}
+Otherwise, a matrix of new observations is required to compute predictions. Default=\code{NULL}.}
 
-\item{CI.level}{The CI.level to construct the Confidence interval, default = 0.95.}
+\item{CI.level}{the CI.level to construct the confidence interval, default = 0.95.}
 }
 \description{
 Predict a regression model with AR errors
 }
+\keyword{internal}
 

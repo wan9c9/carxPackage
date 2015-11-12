@@ -2,7 +2,7 @@
 % Please edit documentation in R/carx_outlier.R
 \name{ot.carx}
 \alias{ot.carx}
-\title{Detecting the outlier of the response data modelled by \code{carx}}
+\title{Detecting outliers in a  \code{carx} model.}
 \usage{
 ot.carx(object)
 }
@@ -10,9 +10,10 @@ ot.carx(object)
 \item{object}{a \code{carx} object}
 }
 \value{
-a \code{object} with updated information. If any outlier is detected, the return object will have a attribute \code{outlier.indices} denoting the indices of outliers.
+a possibly updated \code{object} which will have an attribute \code{outlier.indices} denoting the indices of outliers with the new index of outlier appended, if any outlier is detected.
 }
 \description{
-Add one element to the vector of outlier indices, i.e, the \code{outlier.indices} of the object returned, if an outlier is detected.
+This is an internal function. It tests for additional outlier one at a time, for each time point, as described in Wang and Chan (2015), adjusted for multiplicity of testing. If the test result is significant, the function augments the location of the most significant outlier to the vector of outlier indices, i.e, the \code{outlier.indices} in the object returned by the function.
 }
+\keyword{internal}
 

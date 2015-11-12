@@ -6,6 +6,7 @@
 #' @param prmtrX coefficients for covariates.
 #' @param prmtrAR coefficients for AR model of the residuals.
 #' @param sigma innovation standard deviation.
+#' @keywords internal
 #' @inheritParams predict.carx
 
 predictARX <- function(y,x,prmtrX,prmtrAR,sigma,n.ahead,newxreg,CI.level=0.95)
@@ -48,23 +49,28 @@ predictARX <- function(y,x,prmtrX,prmtrAR,sigma,n.ahead,newxreg,CI.level=0.95)
 }
 
 
-#' Provide predictions with fitted \code{carx} object
+#' Prediction with a fitted \code{carx} object
 #'
-#' Predict the future values of an fitted \code{carx} object with given new observations in \code{x}.
-#' @param object A fitted \code{carx} object.
-#' @param newxreg The new observations for the coverates \code{x}.
+#' Predict the future values of an fitted \code{carx} object. If the model has non-null covariate \code{x} other than the constant mean, the new observations in \code{x} must be supplied via \code{newxreg}. The model prediction is done in a similar way as in \code{fitted.carx} by identifying the latest \eqn{p} consecutive observed responses in the data used to estimate model, then compute the mean of the conditional distribution of the future values given the information since the latest p consecutive observed values and the supplied new covariate values. For more details, see Wang and Chan (2015).
+#' @references
+#' Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables." Submitted.
+#'
+#'
+#' @param object a fitted \code{carx} object.
+#' @param newxreg the new observations for the coverates \code{x}, default={NULL}.
 #' If there is no covariate, the value can be assigned to be \code{NULL}.
-#' Otherwise, a matrix of new observations is required to compute predictions.
-#' @param n.ahead The number of steps ahead to predict, default = 1.
-#' @param CI.level The CI.level to construct the Confidence interval, default = 0.95.
-#' @param nRep The number of replications to be performed in the bootstrap for prediction confidence intervals when censoring exists in the last \code{p}
+#' Otherwise, a matrix of new observations is required to compute predictions. Default=\code{NULL}.
+#' @param n.ahead the number of steps ahead to predict, default = 1.
+#' @param CI.level the CI.level to construct the confidence interval, default = 0.95.
+#' @param nRep the number of replications to be performed in the bootstrap for prediction confidence intervals when censoring exists in the last \code{p}
 #' observations, default = 1000.
 #' @param na.action how should \code{model.frame} deal with \code{NA} values.
+#' @param useSimulatedResidual if True, the innovation sequence will be sampled from the simulated residuals, otherwise, they will be sampled from normal distribution with mean 0 and standard deviation \code{object$sigma}. Set it \code{TRUE} if the normal distribution may be too restrictive. Default = FALSE.
 #' @param ... not used.
 #' @return A list consisting of \code{fit}, \code{se.fit}, and \code{ci} representing the predictions,
 #' standard errors of predictions, and confidence intervals respectively.
 #' @export
-predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,na.action=NULL,useSimulatedResidual=F,...)
+predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,na.action=NULL,useSimulatedResidual=FALSE,...)
 {
 
   if( n.ahead < 1)
@@ -80,7 +86,7 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
       stop("ERROR: newxreg supplied is NULL, but the x data in model is not ones.")
 
     #browser()
-    if(is.vector(newxreg)) 
+    if(is.vector(newxreg))
       newxreg <- as.matrix(newxreg)
     if(dim(newxreg)[1] != n.ahead)
         stop("New data doesn't have the same row of data as n.ahead.")

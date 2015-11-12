@@ -2,7 +2,7 @@
 % Please edit documentation in R/carx_default.R
 \name{AIC.carx}
 \alias{AIC.carx}
-\title{The AIC of a fitted  \code{carx} object}
+\title{Compute the  AIC equivalent of a fitted \code{carx} object}
 \usage{
 \method{AIC}{carx}(object, ..., k = 2)
 }
@@ -17,6 +17,6 @@
 the AIC value
 }
 \description{
-Return the AIC of a fitted \code{carx} object based on the quasi-log-likelihood.
+Return the AIC equivalent of a fitted \code{carx} object where the log-likelihood is replaced by the quasi-log-likelihood.
 }
 

@@ -5,26 +5,33 @@ carx <- function(y,...) UseMethod("carx")
 
 #' The default estimation method for CARX
 #'
-#' Use given data and other settings to estimate the parameters of CARX, and optionally compute the standard error or confidence intervals of parameter estimates by parametric bootstrap.
-#' @param y a vector of possibly censored responses, only uncensored observation
-#' marked by zeros of \code{ci} are used.
-#' @param x a matrix of covariates, or some object which can be coerced to matrix.
-#' @param ci a vector of -1,0,1's indicating that the corresponding y is
-#' left-censored, not censored, and right-censored respectively. Default = NULL, indicating no censoring.
-#' @param lcl a vector of lower censoring limits, or a number assuming constant limit, default = NULL, implying no lower censoring limit.
-#' @param ucl a vector of upper censoring limits, or a number assuming constant limit, default = NULL, implying no upper censoring limit.
+#' Use given data and other settings to estimate the parameters of CARX, and optionally compute the standard error and confidence intervals of parameter estimates by parametric bootstrap.
+
+#' @param y a vector of possibly censored responses. Only uncensored observation marked by zeros of \code{ci} are used.
+#' @param x a matrix of covariates with each column corresponding to a covariate, or some object which can be coerced to matrix, default=\code{NULL}, indicating a pure AR model for \code{y}.
+#' @param ci a vector of numeric values. Only the values with finite corresponding \code{y} will be used. 
+#' Internally the values will be mapped to their signs, 
+#' where negative, zero, and positive value indicating that the corresponding y is
+#' left-censored, observed, and right-censored respectively.
+#' Default = \code{NULL}, indicating no censoring.
+#' @param lcl a vector of lower censoring limits, or a number assuming constant limit, default = \code{NULL}, indicating no lower censoring limit.
+#' @param ucl a vector of upper censoring limits, or a number assuming constant limit, default = \code{NULL}, indicating no upper censoring limit.
 #' @param p the order of AR model for the regression errors, default = 1.
-#' @param prmtrX the initial value for the parameter of \code{x}, default = \code{NULL}.
+#' @param prmtrX the initial value for the parameters of \code{x}, default = \code{NULL}.
 #' @param prmtrAR the initial value for the AR coefficients, default = \code{NULL}.
-#' @param sigmaEps the initial value for the standard deviation of the errors of the AR process, default = \code{NULL}.
+#' @param sigmaEps the initial value for the standard deviation of the innovations of the AR process for regression errors, default = \code{NULL}.
+#' @param y.na.action a string indicating how to deal with NA values in \code{y}. If "skip", the corresponding value will be skipped, furthermore, the \code{p} values after them will be used as (re-)starting points to calculate the quasi log-likelihood. If "as.censored", the \code{y} value will be treated as left-censored with lower censoring limit replaced by positive infinity. Use "skip" if there are few segments of missing data, where the length of each segment of missing data is long.  Use "as.censored" if the missing values in \code{y} are scattered and random. N.B.: The row of data with NA values in \code{x} will always have the "skip" effect in \code{y}.
+#' @param addMu logic indicating whether a constant parameter mu as the stationary mean  when \code{x=NULL} should be included, default = \code{TRUE}.
 #' @param tol the tolerance in estimating the parameters, default = 1.0e-4.
-#' @param max.iter maximum number of iterations allowed when estimating parameters, default = 500.
+#' @param max.iter maximum number of iterations allowed when estimating parameters, default = 100.
 #' @param CI.compute bool value to indicate if the confidence interval for the
-#' parameter is to be constructed, default = \code{FALSE}.
-#' @param CI.level numeric value in (0,1) to get the \code{CI.level} confidence interval for the parameter, default = 0.95.
-#' @param b number of bootstrap samples when estimating confidence interval for the parameter, default = 1000.
-#' @param cenTS an optional argument to store \code{cenTS} object, which might be relevant to data used, used in \code{carx.formula}, default = NULL.
-#' @param verbose bool value indicates whether to print intermediate information, default = FALSE.
+#' parameter is to be constructed, default = \code{FALSE}, as it will take time to run the parametric bootstrap.
+#' @param CI.level numeric value in (0,1) to get the \code{CI.level} confidence interval for the parameters, default = 0.95.
+#' @param b number of bootstrap samples when estimating confidence interval for the parameters, default = 1000.
+#' @param b.robust logical, if \code{TRUE}, the innovation sequences of AR model of regression errors for the bootstrapping confidence interval will be sampled from simulated residuals, otherwise they will be sampled from normal distribution with estimated standard deviation, default = \code{FALSE}.
+#' @param init.method a string representing the method used to initialize the parameters if any of \code{prmtrX}, \code{prmtrAR}, \code{sigmaEps} is \code{NULL}. The "biased" method is always available, as it uses maximum likelihhood estimator after replacing the censored observations by the corresponding censoring limits. The "consistent" method is only available for left censored data. Note that the "consistent" method may produce initial estimates with non-stationary AR coefficients or negative variance of the innovation sequences, in which case, the "biased" method will be used again as initial estimator and in the returned object the attribute \code{fallBackToBiased} will be set \code{TRUE}. Default="biased".
+#' @param cenTS an optional argument to pass a \code{cenTS} object which contain the data used, used in \code{carx.formula}. Default = \code{NULL}.
+#' @param verbose logical value indicates whether to print intermediate information such as the progress of the estimation procedure, and summary of iterations, default = FALSE.
 #' @param ... not used.
 #' @return a CARX object of the estimated model.
 #' @export
@@ -33,21 +40,28 @@ carx <- function(y,...) UseMethod("carx")
 #' model0 <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, p=2)
 #' #or simply call
 #' model0 <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
-#' plot(model0)
-#' tsdiag(model0)
+#' #plot(model0)
+#' #tsdiag(model0)
 
-carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
+carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
        p=1,prmtrX=NULL,prmtrAR=NULL,sigmaEps=NULL,
-       nonfiniteYAsCensored=TRUE,
+       y.na.action=c("skip","as.censored"),
+       #nonfiniteYAsCensored=TRUE,
        addMu=TRUE,
-			 tol=1e-4,max.iter=500,CI.compute=FALSE,CI.level=0.95,b=1000,brobust=FALSE,
-       initMethod = c("biased","consistent"),
+			 tol=1e-4,max.iter=500,CI.compute=FALSE,CI.level=0.95,b=1000,b.robust=FALSE,
+       init.method = c("biased","consistent"),
 			 cenTS=NULL,verbose=FALSE,...)
 {
   #message("Enter carx.default.")
 	verbose <- verbose || options()$verbose
 	nObs <- length(y)
-  initMethod=match.arg(initMethod)
+  
+  y.na.action=match.arg(y.na.action)
+  nonfiniteYAsCensored = FALSE
+  if(y.na.action == "as.censored")
+    nonfiniteYAsCensored = TRUE
+
+  init.method=match.arg(init.method)
 
   finiteY <- which(is.finite(y))
 
@@ -154,7 +168,7 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 	  xValid <- FALSE
 
   #check for finite rows in data and construct skipIndex
-  if(!is.null(x)) 
+  if(!is.null(x))
     finiteRows <- (apply(x, 1, function(x){all(is.finite(x))}))
   else
     finiteRows <- rep(TRUE,length(y))
@@ -171,6 +185,8 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
   skipIndex <- which(skipIndex > 0)
   if(verbose) message("Skip index is constructed as ", paste(skipIndex,collapse=', '))
 	nSkip <- length(skipIndex)
+  #print(head(x))
+
 	ret = list(y = y,
 		   x = x,
 		   xIsOne = xIsOne,
@@ -262,7 +278,7 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 	}
 
 	getEstdPrmtr <- function(){
-	  if(xValid) 
+	  if(xValid)
 	    ret <- c(prmtrXEstd, prmtrAREstd, sigmaEpsEstd)
 	  else
 	    ret <- c(prmtrAREstd, sigmaEpsEstd)
@@ -369,27 +385,38 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 
 	updatePrmtrEV <- function()
 	{
-		if(p > 1){
-			tmpY <- wkMean[,1] - wkMean[,-1]%*%prmtrAR
-		}
-		else{
-			tmpY <- wkMean[,1] - wkMean[,-1]*prmtrAR
-		}
-		tmpY <- tmpY[-skipIndex]
+    #tryCatch( {
+      if(p > 1){
+        tmpY <- wkMean[,1] - wkMean[,-1]%*%prmtrAR
+      }
+      else{
+        tmpY <- wkMean[,1] - wkMean[,-1]*prmtrAR
+      }
+      tmpY <- tmpY[-skipIndex]
 
-		tmpX <- matrix(0,nObs-nSkip,nX)
-		index <- seq(1,nObs)[-skipIndex]
-		for(idx in 1:(nObs-nSkip)){
-			if (p >1){
-				tmpX[idx,] <- x[(index[idx]),] - prmtrAR %*% x[(index[idx]-1):(index[idx]-p),]
-			}
-			else{
-				tmpX[idx,] <- x[(index[idx]),] - prmtrAR * x[(index[idx]-1):(index[idx]-p),]
-			}
-		}
-		ret <- solve(t(tmpX) %*% tmpX, t(tmpX)%*%tmpY )
+      tmpX <- matrix(0,nObs-nSkip,nX)
+      index <- seq(1,nObs)[-skipIndex]
+      for(idx in 1:(nObs-nSkip)){
+        if (p >1){
+          tmpX[idx,] <- x[(index[idx]),] - prmtrAR %*% x[(index[idx]-1):(index[idx]-p),]
+        }
+        else{
+          tmpX[idx,] <- x[(index[idx]),] - prmtrAR * x[(index[idx]-1):(index[idx]-p),]
+        }
+      }
+      ret <- solve(t(tmpX) %*% tmpX, t(tmpX)%*%tmpY )
+      #ret <- MASS::ginv(t(tmpX) %*% tmpX) %*%(t(tmpX)%*%tmpY)
 
-		return(ret)
+      ret
+    #},warning=function(w){
+    #  message("WARNING:", w)
+    #  prmtrX
+    #},error=function(e){
+    #  message("ERROR:",e)
+    #  prmtrX
+    #},finally={
+    #}
+    #)
 	}
 
 	updateSigmaEps <- function(){
@@ -438,10 +465,10 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 		{
 			eStep()
 			delta <- mStep()
-			if(verbose) message(sprintf("Iter:%i, delta: %f, prmtr: %s", nIter, delta, toString(round(getPrmtr(),digits = 4)) ) )
+			if(verbose) message(sprintf("Iter:%i, relDif: %f, prmtr: %s", nIter, delta, toString(round(getPrmtr(),digits = 4)) ) )
 			nIter <- nIter + 1
 		}
-		if(verbose) message(sprintf("Iter:%i, delta: %f, prmtr: %s \nParameter estimated\n", nIter-1, delta, toString(round(getPrmtr(),digits=4)) ) )
+		if(verbose) message(sprintf("Iter:%i, relDif: %f, prmtr: %s \nParameter estimated\n", nIter-1, delta, toString(round(getPrmtr(),digits=4)) ) )
 	}
 
 	initPrmtr <- function(tol,max.iter)
@@ -455,7 +482,7 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 		sigmaEps <<- 1
 
 		eStepNaive()
-		
+
 		#tmporaly modify skipIndex
 		prevSkipIndex <- skipIndex
 		skipIndex <<- sort(unique(c(skipIndex,which(!is.finite(rowMeans(wkMean))))))
@@ -464,10 +491,10 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 		{
 			updateTrend() # needed since it is done to update the trend which is done in the eStep for our method
 			delta <- mStep()
-			if(verbose) message(sprintf("Iter:%i, delta: %f, prmtr: %s", nIter, delta, toString(round(getPrmtr(),digits=4) ) ))
+			if(verbose) message(sprintf("Iter:%i, relDif: %f, prmtr: %s", nIter, delta, toString(round(getPrmtr(),digits=4) ) ))
 			nIter <- nIter + 1
 		}
-		#if(verbose) message(sprintf("Iter:%i, delta: %f, prmtr: %s \nParameter initialized\n", nIter-1, delta, toString(round(getPrmtr(),digits=4) ) ))
+		#if(verbose) message(sprintf("Iter:%i, relDif: %f, prmtr: %s \nParameter initialized\n", nIter-1, delta, toString(round(getPrmtr(),digits=4) ) ))
     if(verbose) message("Initialize parameters, done.")
 		skipIndex <<- skipIndex
 		nSkip <<- length(skipIndex)
@@ -481,7 +508,7 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
     if(any(is.finite(ucl)))
        warning("Method cannot be used for data with right censoring.")
 
-    U <- NULL #record t such that y[t:(t-p)] are uncensored 
+    U <- NULL #record t such that y[t:(t-p)] are uncensored
     for(t in (1:nObs)[-skipIndex])
     {
       if(all(ci[t:(t-p)]==0))
@@ -538,7 +565,7 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 
 	bootstrapSample <- function(epsPool)
 	{
-    if(brobust) 
+    if(b.robust)
       eps <- sample(epsPool,nObs)
     else
       eps <- stats::rnorm(nObs,0, sigmaEps)
@@ -559,28 +586,28 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 
 	bootstrapCI <- function(CI.level,b)
 	{
-    
-		#message(sprintf('Bootstraping CI'))
+
+		message(sprintf('Bootstraping CI'))
 		yOriginal <- y #copy y as it will be overwritten
-    
-    browser()
-    if(brobust)
+
+    #browser()
+    if(b.robust)
       epsPool <- residuals.carx(ret,type="raw")
     else
       epsPool <- NULL
 
 		tmpResult <- matrix(0,b,getNPrmtr())
-		#pb <- txtProgressBar(1,b,style=3)
+		if(!verbose)pb <- txtProgressBar(1,b,style=3)
 		for(i in 1:b){
 			#message(sprintf('Bootstraping CI %i/%i',i,b))
-			#setTxtProgressBar(pb,i)
+			if(!verbose) setTxtProgressBar(pb,i)
 			setInitPrmtrForBootstrap()
 			bootstrapSample(epsPool)
 			resetWK()
 			estimatePrmtr(tol,max.iter)
 			tmpResult[i,] <- getPrmtr()
 		}
-		#close(pb)
+		if(!verbose) close(pb)
 		qv <- c((1-CI.level)/2,1-(1-CI.level)/2)
 		for(j in 1:(getNPrmtr())){
 			CI[j,] <<- stats::quantile(tmpResult[,j],qv)
@@ -597,11 +624,11 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 	#message("initializing parameters")
 	if(needInit || noCensor )  # If no censoring, it is estimating an AR-X
   {
-    if(initMethod == "biased") 
+    if(init.method == "biased" | any(ci>0))
       initPrmtr(tol, max.iter)
     else
     {
-      if(initMethod == "consistent") 
+      if(init.method == "consistent")
         initPrmtr2()
       if(!isStationaryAR(prmtrAR) | is.nan(sigmaEps))
       {
@@ -620,7 +647,7 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 	setEstdPrmtr()
 
 
-	if(xValid)	 
+	if(xValid)
 	  coeff <- c(prmtrXEstd,prmtrAREstd)
 	else
 	  coeff <- prmtrAREstd
@@ -681,11 +708,14 @@ carx.default <- function(y,x,ci=NULL,lcl=NULL,ucl=NULL,
 	invisible(ret)
 }
 
-#' Provide a simple formula interface to the \code{carx} method
+#' A formula interface to the \code{carx} method
 #'
-#' This interface will use the supplied \code{formula} and data provided by \code{data} and other arguments in \code{...} to invoke the \code{carx.default} method.
+#' This interface will use the supplied \code{formula} and data provided by \code{data} and other arguments in \code{...} to invoke the \code{carx.default} method. This is the preferred way of calling the \code{carx.default} function. Also, it is advised to create a \code{cenTS} object with \code{y}, \code{x}, \code{lcl},\code{ci}, and \code{ucl}.
+#'
+#'
+#' @seealso \code{\link{cenTS}} for how to construct a \code{cenTS} object.
 #' @param formula the formula.
-#' @param data the data, can be a \code{list}, \code{data.frame}, or a \code{cenTS} object.
+#' @param data the data consisting of the \code{y}, \code{x}, \code{lcl},\code{ci}, and \code{ucl}, can be a \code{list}, \code{data.frame}, or a \code{\link{cenTS}} object.
 #' @param ... other arguments supplied to \code{\link{carx.default}}.
 #' @export
 #' @examples
@@ -730,7 +760,7 @@ carx.formula <- function(formula, data=list(),...)
 	est
 }
 
-#' Return the quasi-log-likelihood of a \code{carx} object
+#' The quasi-log-likelihood of a \code{carx} object
 #' @param object a fitted \code{carx} object.
 #' @param ... not used.
 #' @return the quasi-log-likelihood.
@@ -742,9 +772,9 @@ logLik.carx <- function(object,...)
 	ret
 }
 
-#' The AIC of a fitted  \code{carx} object
+#' Compute the  AIC equivalent of a fitted \code{carx} object
 #'
-#' Return the AIC of a fitted \code{carx} object based on the quasi-log-likelihood.
+#' Return the AIC equivalent of a fitted \code{carx} object where the log-likelihood is replaced by the quasi-log-likelihood.
 #' @param object a fitted  \code{carx} object.
 #' @param ... not used.
 #' @param k penalty for the number of parameters, default = 2.
@@ -859,5 +889,3 @@ print.summary.carx <- function(x,...)
 	cat("\nAIC:\n")
 	print(x$aic)
 }
-
-

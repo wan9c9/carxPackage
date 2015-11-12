@@ -4,20 +4,20 @@
 \alias{outlier}
 \title{S3 method to detect outlier of a \code{carx} object}
 \usage{
-outlier(object, outlier.prefix = "OI_", seed = 0)
+outlier(object, outlier.prefix = "OI_", seed = NULL)
 }
 \arguments{
 \item{object}{a \code{carx} object.}
 
 \item{outlier.prefix}{the prefix used to construct variable name for indicator variables representing the detected outliers, default = "OI_".}
 
-\item{seed}{the seed for randon number generator, default=0.}
+\item{seed}{the seed for randon number generator, default=\code{NULL}.}
 }
 \value{
 an updated \code{carx} object. If any outlier is detected, its index will be stored in the \code{outlier.indices} attribute of the return object, and prefix for variable name is stored in the \code{outlier.prefix} attribute. Note that if the original object is fitted through a formula interface, the formula will also be updated.
 }
 \description{
-Detect all outliers of a \code{carx} object, as opposed to \code{\link{ot.carx}} which detects only one outliers
+Detect all outliers of a \code{carx} object.
 }
 \seealso{
 \code{\link{outlier.carx}}.

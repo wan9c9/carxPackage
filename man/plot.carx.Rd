@@ -11,7 +11,7 @@
 \item{x}{a fitted \code{carx} object.}
 
 \item{FUN}{an optional function to be applied to the data related to the
-responses of the object, e.g., if a log transformation has been applied to the data, an exp function can be supplied so that the data plotted are at the same scale of the orginal data, default = \code{NULL}.}
+responses of the object, e.g., if a log transformation has been applied to the data, an exp function can be supplied so that the data plotted are at the scale of the original data, default = \code{NULL}.}
 
 \item{xAxisVar}{an optional vector to be plotted as the x variable, default =
 \code{NULL} corresponds time series plot, other vectors are assumed to be
@@ -27,8 +27,11 @@ sequential.}
 None. A plot will be displayed.
 }
 \description{
-\code{plot.carx} plots a fitted \code{carx} object with other settings
-the y axis will be the values related to the response. If the object is fitted with a \code{cenTS} object which is obtained by \code{object$cenTS}, the function will take advantage of the plot function for a \code{cenTS} object and plot the fitted values. Otherwise, the plot function will try to produce a plot similar to the previous case, while the x axis can be supplied by the user through \code{xAxisVar}, which must be ordinal and increasing.
+\code{plot.carx} plots a fitted \code{carx} object with other settings.
+The y axis will be the values related to the response.
+If the object is fitted with a \code{cenTS} object which is obtained by \code{object$cenTS},
+ the function will take advantage of the plot function for a \code{cenTS} object and superimpose the plot of the fitted values.
+ Otherwise, the plot function will try to produce a plot similar to the previous case, while the x axis can be supplied by the user through \code{xAxisVar}, which must be ordinal and increasing.
 }
 \examples{
 #case 1: plot with cenTS object in the object, note that the x-axis is in date.
@@ -37,7 +40,7 @@ model0 <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
 #use default settings
 plot(model0)
 
-#case 2: plot without cenTS object in the object, noe that the x-axis is just numbers.
+#case 2: plot without cenTS object in the object, note that the x-axis is a vector of numbers.
 dat = carxSim(nObs=100,seed=0)
 model0 <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, p=2)
 #or simply call

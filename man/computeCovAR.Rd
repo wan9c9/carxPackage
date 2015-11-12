@@ -4,19 +4,19 @@
 \alias{computeCovAR}
 \title{Compute the covariance matrix of some observations of the AR model}
 \usage{
-computeCovAR(arPrmtr, sigmaEps, lag = length(arPrmtr) + 1)
+computeCovAR(arPrmtr, sigma, lag = length(arPrmtr) + 1)
 }
 \arguments{
 \item{arPrmtr}{the parameter of the AR model.}
 
-\item{sigmaEps}{the standard deviation of the residuals of the AR model.}
+\item{sigma}{the standard deviation of the innovations of the AR model.}
 
-\item{lag}{number of lags to be computed, including lag at zero.}
+\item{lag}{the number of lags to be computed, including lag at zero.}
 }
 \value{
-the covariance matrix needed.
+the covariance matrix.
 }
 \description{
-Compute the covariance matrix of \deqn{(\eta_t,...,\eta_{t-lag})} of the AR model.
+Compute the covariance matrix of \eqn{(\eta_t,...,\eta_{t-lag})} of the AR model.
 }
 

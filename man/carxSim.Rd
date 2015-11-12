@@ -5,7 +5,8 @@
 \title{Simulate a sample data for \code{carx}}
 \usage{
 carxSim(nObs = 200, prmtrAR = c(-0.28, 0.25), prmtrX = c(0.2, 0.4),
-  sigmaEps = 0.6, lcl = -1, ucl = 1, x = NULL, seed = NULL)
+  sigmaEps = 0.6, lcl = -1, ucl = 1, x = NULL, seed = NULL,
+  inno.dist = c("normal", "t"), t.df = 5)
 }
 \arguments{
 \item{nObs}{number of observations to be simulated.}
@@ -22,15 +23,25 @@ carxSim(nObs = 200, prmtrAR = c(-0.28, 0.25), prmtrX = c(0.2, 0.4),
 
 \item{x}{optional matrix for X, default = \code{NULL}, in which case X will be simulated from standard normal distribution with dimensions determined by \code{nObs} and \code{prmtrX}.}
 
-\item{seed}{optional to set the seed of random number generator used by \code{R}.}
+\item{seed}{optional to set the seed of random number generator used by \code{R}, default=\code{NULL}.}
+
+\item{inno.dist}{innovation distribution, can be "normal" or "t", default="normal". If it is "t", its degree of freedom should be supplied in \code{t.df}.}
+
+\item{t.df}{the degree of freedom of t distribution, used only if \code{inno.dist}="t". Default=5.}
 }
 \value{
 a data frame of simulated \code{y}, \code{x}, \code{ci}, \code{lcl} and \code{ucl}.
 }
 \description{
-Use provided parameters and other settings to simulate a series of data.
+Use provided parameters and other settings to simulate data from CARX as specified by Wang and Chan (2015).
 }
 \examples{
 dat = carxSim()
+}
+\references{
+Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables." Submitted.
+}
+\seealso{
+\code{\link{carx}} for model specification.
 }
 

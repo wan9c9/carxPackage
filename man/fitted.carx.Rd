@@ -16,5 +16,8 @@ the fitted values.
 }
 \description{
 Compute the fitted values from a \code{carx} object.
+ Note that the existence of censoring breaks the usual Markov property for AR model.  In the presence of censoring, for each \eqn{t=1,...,n} with \eqn{n} being the sample size, we generally need to obtain the conditional distribution
+ \eqn{D_t = D(Y^*_t|X_t, {(Y_{j}, X_j )}_{j=\tau}^{t-1} )},
+where \eqn{1 \le \tau \le t-p} is the largest one such that none of \eqn{Y_t;t=\tau+p-1,...,\tau} is censored, due to the autoregressive nature of the regression errors. Then if \eqn{\tau = t-p}, the fitted value is computed directly as an AR process, otherwise, the fitted value is computed as the mean of the distribution \eqn{D_t} by Monte Carlo.
 }
 
