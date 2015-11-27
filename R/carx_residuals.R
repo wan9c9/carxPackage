@@ -16,10 +16,10 @@
 #' @param ... not used.
 #' @return the simulated residuals.
 #' @export
-residuals.carx <- function(object,type=c("raw","pearson"),seed=0,...)
+residuals.carx <- function(object,type=c("raw","pearson"),seed=NULL,...)
 {
   type <- match.arg(type)
-  set.seed(seed)
+  if(!is.null(seed)) set.seed(seed)
 	nObs <- object$nObs
 	p <- object$p
 	y <- object$y

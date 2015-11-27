@@ -30,6 +30,7 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps
 
 	if(!is.null(seed))
 		set.seed(seed)
+
   if(inno.dist == "normal")
     eps <- stats::rnorm(nObs,0, sigmaEps)
   else
@@ -95,7 +96,6 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps
 		    ucl=ucl,
 		    x = x
 		    )
-  #browser()
   ret <- try(data.frame(ret,row.names=NULL),silent=TRUE)
   #assign("last.warning", NULL, envir = baseenv())
   colnames(ret) <- c("y","ci","lcl","ucl",colnames(x))
