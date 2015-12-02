@@ -19,7 +19,7 @@ carx <- function(y,...) UseMethod("carx")
 #' @param p the order of AR model for the regression errors, default = 1.
 #' @param prmtrX the initial value for the parameters of \code{x}, default = \code{NULL}.
 #' @param prmtrAR the initial value for the AR coefficients, default = \code{NULL}.
-#' @param sigmaEps the initial value for the standard deviation of the innovations of the AR process for regression errors, default = \code{NULL}.
+#' @param sigma the initial value for the standard deviation of the innovations of the AR process for regression errors, default = \code{NULL}.
 #' @param y.na.action a string indicating how to deal with NA values in \code{y}. If "skip", the corresponding value will be skipped, furthermore, the \code{p} values after them will be used as (re-)starting points to calculate the quasi log-likelihood. If "as.censored", the \code{y} value will be treated as left-censored with lower censoring limit replaced by positive infinity. Use "skip" if there are few segments of missing data, where the length of each segment of missing data is long.  Use "as.censored" if the missing values in \code{y} are scattered and random. N.B.: The row of data with NA values in \code{x} will always have the "skip" effect in \code{y}.
 #' @param addMu logic indicating whether a constant parameter mu as the stationary mean  when \code{x=NULL} should be included, default = \code{TRUE}.
 #' @param tol the tolerance in estimating the parameters, default = 1.0e-4.
@@ -29,7 +29,7 @@ carx <- function(y,...) UseMethod("carx")
 #' @param CI.level numeric value in (0,1) to get the \code{CI.level} confidence interval for the parameters, default = 0.95.
 #' @param b number of bootstrap samples when estimating confidence interval for the parameters, default = 1000.
 #' @param b.robust logical, if \code{TRUE}, the innovation sequences of AR model of regression errors for the bootstrapping confidence interval will be sampled from simulated residuals, otherwise they will be sampled from normal distribution with estimated standard deviation, default = \code{FALSE}.
-#' @param init.method a string representing the method used to initialize the parameters if any of \code{prmtrX}, \code{prmtrAR}, \code{sigmaEps} is \code{NULL}. The "biased" method is always available, as it uses maximum likelihhood estimator after replacing the censored observations by the corresponding censoring limits. The "consistent" method is only available for left censored data. Note that the "consistent" method may produce initial estimates with non-stationary AR coefficients or negative variance of the innovation sequences, in which case, the "biased" method will be used again as initial estimator and in the returned object the attribute \code{fallBackToBiased} will be set \code{TRUE}. Default="biased".
+#' @param init.method a string representing the method used to initialize the parameters if any of \code{prmtrX}, \code{prmtrAR}, \code{sigma} is \code{NULL}. The "biased" method is always available, as it uses maximum likelihhood estimator after replacing the censored observations by the corresponding censoring limits. The "consistent" method is only available for left censored data. Note that the "consistent" method may produce initial estimates with non-stationary AR coefficients or negative variance of the innovation sequences, in which case, the "biased" method will be used again as initial estimator and in the returned object the attribute \code{fallBackToBiased} will be set \code{TRUE}. Default="biased".
 #' @param cenTS an optional argument to pass a \code{cenTS} object which contain the data used, used in \code{carx.formula}. Default = \code{NULL}.
 #' @param verbose logical value indicates whether to print intermediate information such as the progress of the estimation procedure, and summary of iterations, default = FALSE.
 #' @param ... not used.
@@ -44,7 +44,7 @@ carx <- function(y,...) UseMethod("carx")
 #' #tsdiag(model0)
 
 carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
-       p=1,prmtrX=NULL,prmtrAR=NULL,sigmaEps=NULL,
+       p=1,prmtrX=NULL,prmtrAR=NULL,sigma=NULL,
        y.na.action=c("skip","as.censored"),
        #nonfiniteYAsCensored=TRUE,
        addMu=TRUE,
@@ -208,11 +208,11 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 
 	#parameters
 	#generic
-	if(is.null(prmtrX) || is.null(prmtrAR) || is.null(sigmaEps) )
+	if(is.null(prmtrX) || is.null(prmtrAR) || is.null(sigma) )
 	{
 		prmtrX <- numeric(nX)
 		prmtrAR <- numeric(p)
-		sigmaEps <- numeric(1)
+		sigma <- numeric(1)
 		needInit <- TRUE
 	}
 	else
@@ -221,7 +221,7 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 	#special to store estimated values
 	prmtrXEstd <- numeric(nX)
 	prmtrAREstd <- numeric(p)
-	sigmaEpsEstd <- numeric(1)
+	sigmaEstd <- numeric(1)
 
 	trend <- numeric(nObs)
 	covEta <- matrix(nrow=p+1, ncol = p+1)
@@ -254,7 +254,7 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 
 
 	getPrmtr <- function(){
-		ret <- c(prmtrX, prmtrAR, sigmaEps)
+		ret <- c(prmtrX, prmtrAR, sigma)
 		return(ret)
 	}
 
@@ -267,21 +267,21 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 	{ # set current parameter to be the estimated
 		prmtrX   <<-   prmtrXEstd
 		prmtrAR   <<-	prmtrAREstd
-		sigmaEps  <<-	sigmaEpsEstd
+		sigma  <<-	sigmaEstd
 	}
 
 	setEstdPrmtr <- function()
 	{ # store the estimated parameter
 		prmtrXEstd   <<- prmtrX
 		prmtrAREstd   <<- prmtrAR
-		sigmaEpsEstd  <<- sigmaEps
+		sigmaEstd  <<- sigma
 	}
 
 	getEstdPrmtr <- function(){
 	  if(xValid)
-	    ret <- c(prmtrXEstd, prmtrAREstd, sigmaEpsEstd)
+	    ret <- c(prmtrXEstd, prmtrAREstd, sigmaEstd)
 	  else
-	    ret <- c(prmtrAREstd, sigmaEpsEstd)
+	    ret <- c(prmtrAREstd, sigmaEstd)
 		return(ret)
 	}
 
@@ -290,7 +290,7 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 	}
 
 	updateCovEta <- function(){
-		covEta <<- computeCovAR(prmtrAR, sigmaEps)
+		covEta <<- computeCovAR(prmtrAR, sigma)
 	}
 
 	#calculate the expectations
@@ -435,7 +435,7 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 
 	mStep <- function(){
 
-    prevPrmtr <- c(prmtrX,prmtrAR,sigmaEps)
+    prevPrmtr <- c(prmtrX,prmtrAR,sigma)
 		delta <- 0
 
 		newPrmtrAR <- updatePrmtrAR()
@@ -450,8 +450,8 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
     }
 
 		newSigmaEps <- updateSigmaEps()
-		delta <- delta + abs(newSigmaEps - sigmaEps)
-		sigmaEps <<- newSigmaEps
+		delta <- delta + abs(newSigmaEps - sigma)
+		sigma <<- newSigmaEps
 
     return(delta/sqrt(sum(prevPrmtr)^2))
 	}
@@ -479,7 +479,7 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 
 		prmtrX <<- numeric(nX)
 		prmtrAR <<- numeric(p)
-		sigmaEps <<- 1
+		sigma <<- 1
 
 		eStepNaive()
 
@@ -544,9 +544,9 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
       prmtrX <<- tmp[1:nX]
       prmtrAR <<- tmp[(nX+1):(nX+p)]
       if(tmp[length(tmp)]>=0)
-        sigmaEps <<- sqrt(tmp[length(tmp)])
+        sigma <<- sqrt(tmp[length(tmp)])
       else
-        sigmaEps <<- NaN
+        sigma <<- NaN
     }
     else
     {
@@ -557,7 +557,7 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 
 	exptdLogLik <- function()
 	{
-		val <- -(nObs - nSkip)*(1+log(sigmaEpsEstd^2))/2
+		val <- -(nObs - nSkip)*(1+log(sigmaEstd^2))/2
 		val
 	}
 
@@ -568,7 +568,7 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
     if(b.robust)
       eps <- sample(epsPool,nObs)
     else
-      eps <- stats::rnorm(nObs,0, sigmaEps)
+      eps <- stats::rnorm(nObs,0, sigma)
 
 		updateTrend()
 
@@ -630,7 +630,7 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
     {
       if(init.method == "consistent")
         initPrmtr2()
-      if(!isStationaryAR(prmtrAR) | is.nan(sigmaEps))
+      if(!isStationaryAR(prmtrAR) | is.nan(sigma))
       {
         if(verbose) message("Initial consistent estimator for AR parameter is not stationary, fall back to unbiased estimator")
         initPrmtr(tol, max.iter)
@@ -669,7 +669,7 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 	ret$coefficients = coeff
 	ret$prmtrX = prmtrXEstd
 	ret$prmtrAR = prmtrAREstd
-	ret$sigma = sigmaEpsEstd
+	ret$sigma = sigmaEstd
   ret$fallBackToBiased = fallBackToBiased
 
 	ret$censorRate = getCensorRate()

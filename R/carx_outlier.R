@@ -145,7 +145,7 @@ outlier.carx <- function(object,outlier.prefix="OI_",seed=NULL)
                   p=newObj$p,
                   prmtrX = c(newObj$prmtrX,0),
                   prmtrAR = newObj$prmtrAR,
-                  sigmaEps = newObj$sigma,
+                  sigma = newObj$sigma,
                   tol = newObj$tol,
                   max.iter = newObj$max.iter,
                   CI.compute=FALSE
@@ -170,7 +170,7 @@ outlier.carx <- function(object,outlier.prefix="OI_",seed=NULL)
                    p=newObj$p,
                    prmtrX = c(newObj$prmtrX,0),
                    prmtrAR = newObj$prmtrAR,
-                   sigmaEps = newObj$sigma,
+                   sigma = newObj$sigma,
                    tol = newObj$tol,
                    max.iter = newObj$max.iter,
                    CI.compute=FALSE

@@ -97,7 +97,7 @@ residuals.carx <- function(object,type=c("raw","pearson"),seed=NULL,...)
 	m2 <- carx(y, object$x, rep(0,nObs), NULL, NULL, object$p,
 	           prmtrAR=object$prmtrAR,
 	           prmtrX = object$prmtrX,
-	           sigmaEps = object$sigmaEps,
+	           sigma = object$sigma,
 	           CI.compute=FALSE)
 	#print(m2)
 	rsdl <- numeric(nObs)
