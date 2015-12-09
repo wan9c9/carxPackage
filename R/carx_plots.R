@@ -78,7 +78,7 @@ plot.carx <- function(x,FUN=identity, xAxisVar=NULL, xlab="Index", ylab="Respons
     if(validUcl & ordinalX)
     {
       ucl <- sapply(object$ucl, FUN)
-      lgd <- c(lgd,"Upper censor limit")
+      lgd <- c(lgd,"Upper censoring limit")
       plty <- c(plty,5)
       pcol <- c(pcol,'red')
     }
