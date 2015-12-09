@@ -38,8 +38,13 @@ testTrendCarx <- function(object,level=0.05,nb=19,k=5,verbose=TRUE)
     resp <- residuals(bObj)
     bts[iRep] <- computeTestStat(resp,k)
   }
-  val <- ifelse((sum(bts>ts0)+1)/(nb+1) <= level, 1,0)
-  ptm1 <- proc.time() - ptm0
-  if(verbose) message(sprintf("Test done in %5.1f secs, with %d bootstrap. Result: %d",ptm1[3],nb,val))
+  #val <- ifelse((sum(bts>ts0)+1)/(nb+1) <= level, 1,0)
+  val <- (sum(bts>ts0)+1)/(nb+1)
+	ptm1 <- proc.time() - ptm0
+  if(verbose){
+    hist(bts,breaks=as.integer(nb/10),main=sprintf("nb:%4d,p-value: %5.2f ",nb, val))
+		abline(v=ts0,col="red")
+		message(sprintf("Test done in %5.1f secs, with %d bootstraps. Result: %5.3f",ptm1[3],nb,val))
+	}
   val
 }
