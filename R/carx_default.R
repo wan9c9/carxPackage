@@ -590,7 +590,6 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 		message(sprintf('Bootstraping CI'))
 		yOriginal <- y #copy y as it will be overwritten
 
-    #browser()
     if(b.robust)
       epsPool <- residuals.carx(ret,type="raw")
     else
@@ -607,6 +606,7 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 			estimatePrmtr(tol,max.iter)
 			tmpResult[i,] <- getPrmtr()
 		}
+		ret$prmtrEstdBootstrap <<- tmpResult
 		if(!verbose) close(pb)
 		qv <- c((1-CI.level)/2,1-(1-CI.level)/2)
 		for(j in 1:(getNPrmtr())){
@@ -698,6 +698,7 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 		ret$CI <- CI
 		ret$vcov <- covMat
     ret$pVal <- pVal
+		colnames(ret$prmtrEstdBootstrap) = rnames
 	}else{
 		ret$CI <- NULL
 		ret$vcov <- NULL
