@@ -1,19 +1,21 @@
 #' Plot a fitted \code{carx} object
 #'
-#' \code{plot.carx} plots a fitted \code{carx} object with other settings.
+#' \code{plot.carx} plots a fitted \code{carx} object.
+#' 
 #' The y axis will be the values related to the response.
-#' If the object is fitted with a \code{cenTS} object which is obtained by \code{object$cenTS},
+#' If the fitted object contains the data and censored  information in a \code{cenTS} object,
 #'  the function will take advantage of the plot function for a \code{cenTS} object and superimpose the plot of the fitted values.
 #'  Otherwise, the plot function will try to produce a plot similar to the previous case, while the x axis can be supplied by the user through \code{xAxisVar}, which must be ordinal and increasing.
 #'
 #' @param x a fitted \code{carx} object.
-#' @param FUN an optional function to be applied to the data related to the
-#' responses of the object, e.g., if a log transformation has been applied to the data, an exp function can be supplied so that the data plotted are at the scale of the original data, default = \code{NULL}.
-#' @param xAxisVar an optional vector to be plotted as the x variable, default =
-#' \code{NULL} corresponds time series plot, other vectors are assumed to be
-#' sequential.
-#' @param xlab the label for x axis, default = "Index".
-#' @param ylab the label for y axis, default = "Response".
+#' @param FUN an optional function to be applied to the transform the responses before plotting. 
+#' This is useful for plotting the data on the original scale if the fitted \code{carx} object is based on
+#' transformed responses. For instance, if the \code{carx} object was fitted with log transformed responses, 
+#' setting \code{FUN} to exp renders the original response data to be plotted. Default = \code{NULL}.
+#' @param xAxisVar an optional vector to be plotted as the x variable. Default =
+#' \code{NULL} corresponds to doing a time series plot.
+#' @param xlab the label of the x axis. Default = "Index".
+#' @param ylab the label of the y axis. Default = "Response".
 #' @param ... other parameters supplied to the generic function \code{plot}.
 #' @return None. A plot will be displayed.
 #'

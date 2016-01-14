@@ -1,21 +1,34 @@
 #' Residuals of a fitted \code{carx} object
 #'
-#' This function computes residuals of fitted \code{carx} object. When no censoring is present, the ordinary residuals will be computed, otherwise, the simulated residuals (Gourieroux, Monfort, Renault, and Trognon 1987) of a fitted \code{carx} object will be computed,  as suggested in Wang and Chan (2015).
+#' Computes the residuals of fitted \code{carx} object.
+#' When no censoring is present, the ordinary residuals will be computed.
+#' Otherwise, the simulated residuals (Gourieroux, Monfort, Renault, and Trognon 1987) of a 
+#' fitted \code{carx} object will be computed, as suggested in Wang and Chan (2015).
 #' 
 #'  The simulated residuals are constructed as follows.
-#'  First, impute each unobserved  \eqn{Y_t^*} by a realization from the conditional distribution \eqn{D(Y_t^*|\{(Y_s,X_s)\}_{s=1}^t)}, evaluated at the parameter estimate.
-#'  Then, refit the model with \eqn{(Y_t^* , X_t)} so obtained, via conditional maximum likelihood; the residuals from the latter model are the simulated residuals \eqn{\varepsilon_t}.
-#' @references Gourieroux C, Monfort A, Renault E, Trognon A (1987). "Simulated residuals." Journal of Econometrics, 34(1), 201-252.
+#'  First, impute each unobserved  \eqn{Y_t^*} by a (random) realization from the conditional distribution 
+#'  \eqn{D(Y_t^*|\{(Y_s,X_s)\}_{s=1}^t)}, evaluated at the parameter estimate.
+#'  Then, refit the model with \eqn{(Y_t^* , X_t)} so obtained, via the method of conditional maximum likelihood; 
+#'  the residuals from the latter model are the simulated residuals \eqn{\varepsilon_t}.
+#' @references Gourieroux C, Monfort A, Renault E, Trognon A (1987). "Simulated residuals." 
+#' Journal of Econometrics, 34(1), 201-252.
 #'
 #' Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables." Submitted.
 #' @param object a fitted \code{carx} object.
 #' @param type a string indicates which type of residual is to be returned.
 #' "raw" returns the (simulated) residuals;
 #' "pearson" returns the raw residuals divided by estimated standard error of the residuals.
-#' @param seed the seed for random number generator.
+#' @param seed the seed for the random number generator.
 #' @param ... not used.
 #' @return the simulated residuals.
 #' @export
+#' @examples
+#' dat = carxSim(nObs=100,seed=0)
+#' mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+#' #compute the raw residuals
+#' res = residuals(mdl,type="raw")
+#' #compute the Pearson residuals
+#' res = residuals(mdl,type="pearson")
 residuals.carx <- function(object,type=c("raw","pearson"),seed=NULL,...)
 {
   type <- match.arg(type)
@@ -29,7 +42,7 @@ residuals.carx <- function(object,type=c("raw","pearson"),seed=NULL,...)
 	eta <- object$y - trend
 	for(idx in 1:p)
 	{
-    if(!finiteRows[idx])
+   if(!finiteRows[idx])
       next
 		if(object$ci[idx] > 0)
 			y[idx] = object$ucl[idx]

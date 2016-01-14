@@ -1,21 +1,25 @@
-#' Simulate a sample data for \code{carx}
+#' Simulate  data from a \code{carx} model
 #'
-#' Use provided parameters and other settings to simulate data from CARX as specified by Wang and Chan (2015). 
+#' Use the provided parameters in the supplied \code{carx} model and other settings to 
+#' simulate data from the \code{carx} model; see  Wang and Chan (2015). 
 
-#' @references Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables." Submitted.
+#' @references Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model 
+#' with exogenous variables." Submitted.
 #'
 #' @seealso \code{\link{carx}} for model specification. 
 #'
 #' @param nObs number of observations to be simulated.
 #' @param prmtrAR the AR parameter.
-#' @param prmtrX the parameter for X.
-#' @param sigmaEps the standard deviation for the white noises of the AR process.
+#' @param prmtrX the regression parameters for X.
+#' @param sigmaEps the innovation standard deviation for the AR process.
 #' @param lcl the lower censor limit.
 #' @param ucl the upper censor limit.
-#' @param x optional matrix for X, default = \code{NULL}, in which case X will be simulated from standard normal distribution with dimensions determined by \code{nObs} and \code{prmtrX}.
+#' @param x optional matrix for X. Default = \code{NULL}, in which case X will be simulated from 
+#'  the standard normal distribution with dimensions determined by \code{nObs} and \code{prmtrX}.
 #' @param seed optional to set the seed of random number generator used by \code{R}, default=\code{NULL}.
-#' @param inno.dist innovation distribution, can be "normal" or "t", default="normal". If it is "t", its degree of freedom should be supplied in \code{t.df}.
-#' @param t.df the degree of freedom of t distribution, used only if \code{inno.dist}="t". Default=5.
+#' @param inno.dist innovation distribution, can be "normal" or "t", default="normal". If it is "t", 
+#'  its degree of freedom should be supplied in \code{t.df}.
+#' @param t.df the degree of freedom of the t distribution, used only if \code{inno.dist}="t". Default=5.
 #' @return a data frame of simulated \code{y}, \code{x}, \code{ci}, \code{lcl} and \code{ucl}.
 #' @export
 #' @examples

@@ -1,14 +1,26 @@
 #' Fitted values of a \code{carx} object
 #'
 #' Compute the fitted values from a \code{carx} object.
-#'  Note that the existence of censoring breaks the usual Markov property for AR model.  In the presence of censoring, for each \eqn{t=1,...,n} with \eqn{n} being the sample size, we generally need to obtain the conditional distribution
+#'  Note that the existence of censoring invalidates the usual Markov property for an AR model.  
+#'  Instead, the conditional distribution of \eqn{Y^*_t} given the past \eqn{Y}s and current
+#'  and past covariates is the same as the conditional distribution
 #'  \eqn{D_t = D(Y^*_t|X_t, {(Y_{j}, X_j )}_{j=\tau}^{t-1} )},
-#' where \eqn{1 \le \tau \le t-p} is the largest one such that none of \eqn{Y_t;t=\tau+p-1,...,\tau} is censored, due to the autoregressive nature of the regression errors. Then if \eqn{\tau = t-p}, the fitted value is computed directly as an AR process, otherwise, the fitted value is computed as the mean of the distribution \eqn{D_t} by Monte Carlo.
+#' where \eqn{1 \le \tau \le t-p} is the largest integer \eqn{t} such that 
+#' none of \eqn{Y_t;t=\tau+p-1,...,\tau} is censored. In the case that \eqn{\tau = t-p}, 
+#' the fitted value can be readily computed; otherwise, the fitted value is computed as the 
+#' mean of the distribution 
+#' \eqn{D_t} by the function \code{\link[tmvtnorm]{mtmvnorm}} from the package \pkg{{tmvtnorm}}.
 
 #' @param object a fitted \code{carx} object.
 #' @param ... not used.
 #' @return the fitted values.
 #' @export
+#' @examples
+#' dat = carxSim(nObs=100,seed=0)
+#' mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+#' #compute the fitted values
+#' fv = fitted(mdl)
+#
 fitted.carx <- function(object,...)
 {
 	#message("Calling fitted.carx")

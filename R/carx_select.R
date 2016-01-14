@@ -1,21 +1,32 @@
-#' Select the CARX model by AIC from different combinations of formulas and AR orders
+#' Select a \code{carx} model by the AIC 
 #'
-#' This function selects the CARX model by AIC from a formula or a list of formulas with maximal AR order.
+#' This function selects the \code{carx} model which minimizes the AIC among a set of \code{carx} models
+#'  defined by a set of  formulas or a list of regression formulas with a maximal AR order.
 #' The model specification is supplied by \code{formulas} which can be either a formula or a list of formulas.
-#' For each formula, the function will estimate the models with AR orders from 1 to \code{max.ar} inclusive.
-#' If \code{detect.outlier=TRUE}, outlier detection will be performed for each combination of formula and AR order.
-#' The function returns a \code{list} which consists of: 1) a \code{aicMat} which is a matrix of AIC where each row contains AICs of the models a specific formula with AR orders from 1 to \code{mar.ar} (after outlier detection if enabled); 2) \code{fitted} which is the fitted object of the selected model.
+#' For each formula, the function will estimate the \code{carx} models with the AR order
+#'  from 1 to \code{max.ar} inclusive.
+#' If \code{detect.outlier=TRUE}, outlier detection will be performed for each combination of model 
+#' formula and AR order.
+#' The function returns a \code{list} which consists of: 1)  \code{aicMat} which is a matrix of AIC
+#' values where 
+#' each row contains the AICs of the model given by a specific regression formula with the AR order 
+#' ranging from 1 to \code{mar.ar} 
+#' (after incorporation of any found outlier if outlier detection if enabled), and 
+#' 2) \code{fitted} which is the fitted object of the selected model.
 
-#' @param formulas a list of model formulas, or a single formula.
-#' @param data the data for CARX.
-#' @param max.ar maximal AR order.
-#' @param detect.outlier logical to determine if outlier detection is performed before the AIC for a particular model formula an AR order is computed, default = \code{FALSE}.
-#' @param ... other arguments to be supplied, if not null, it will be called with the selected model and data. Examples include {CI.compute=TRUE}, which will cause the function to re-estimate the model with confidence intervals computed, as in the selection part, the confidence interval is not computed.
+#' @param formulas a regression formula or a  list of regression formulas.
+#' @param data a \code{CenTS} object containing the data and censored information.
+#' @param max.ar the maximal AR order.
+#' @param detect.outlier logical to specify whether outlier detection is performed (and incorporating in 
+#' the \code{carx} model any found additive outliers) before computing the AIC for a model. Default = \code{FALSE}.
+#' @param ... other arguments to be supplied, if not null, it will be called with the selected model and data. 
+#' Examples include \code{CI.compute=TRUE}, which will cause the function to re-estimate the selected model with the confidence 
+#' intervals computed, as in the selection part, no confidence interval is  computed.
 #' @export
 #' @return a list consisting of:
 #' \itemize{
 #' \item{\code{fitted}}{ the fitted CARX object of the model with the smallest AIC.}
-#' \item{\code{aicMat}}{ the matrix of AIC where rows correspond to the model formulas and columns correspond to AR orders.}
+#' \item{\code{aicMat}}{ the matrix of AIC where rows correspond to the model formulas and columns correspond to the AR orders.}
 #' }
 #' @examples
 #' dataSim <- carxSimCenTS(nObs=100)

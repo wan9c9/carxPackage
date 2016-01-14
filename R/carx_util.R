@@ -1,7 +1,7 @@
-#' Calculate the conditional mean & variance of a random vector following multivariate normal distribution
+#' Calculate the conditional mean & variance of a random vector following a multivariate normal distribution
 #'
 #' Calculate the conditional mean & variance of a sub-vector
-#' of a vector given the rest of known elements, following multivariate normal distribution.
+#' of a random vector given the rest elements, where the random vector follows a multivariate normal distribution.
 #' This function calculates the conditional mean & variance of a multivariate normal distribution,
 #' with (\code{meanVec}, \code{varMat}), conditional on y at the indices \code{conditionalIndex}.
 #'
@@ -43,10 +43,10 @@ isStationaryAR <- function(arPrmtr)
 
 #' Compute the covariance matrix of some observations of the AR model
 #'
-#' Compute the covariance matrix of \eqn{(\eta_t,...,\eta_{t-lag})} of the AR model.
-#' @param arPrmtr the parameter of the AR model.
-#' @param sigma the standard deviation of the innovations of the AR model.
-#' @param lag the number of lags to be computed, including lag at zero.
+#' Compute the covariance matrix of \eqn{(\eta_t,...,\eta_{t-lag})} for an AR model.
+#' @param arPrmtr the parameter of the AR model (with no intercept term).
+#' @param sigma the innovation standard deviation.
+#' @param lag the number of lags to be computed, including lag zero.
 #' @return the covariance matrix.
 #' @export
 computeCovAR <- function(arPrmtr, sigma, lag=length(arPrmtr)+1)

@@ -3,35 +3,65 @@
 carx <- function(y,...) UseMethod("carx")
 
 
-#' The default estimation method for CARX
+#' The default estimation method for a CARX model
 #'
-#' Use given data and other settings to estimate the parameters of CARX, and optionally compute the standard error and confidence intervals of parameter estimates by parametric bootstrap.
-
-#' @param y a vector of possibly censored responses. Only uncensored observation marked by zeros of \code{ci} are used.
-#' @param x a matrix of covariates with each column corresponding to a covariate, or some object which can be coerced to matrix, default=\code{NULL}, indicating a pure AR model for \code{y}.
-#' @param ci a vector of numeric values. Only the values with finite corresponding \code{y} will be used. 
-#' Internally the values will be mapped to their signs, 
-#' where negative, zero, and positive value indicating that the corresponding y is
-#' left-censored, observed, and right-censored respectively.
-#' Default = \code{NULL}, indicating no censoring.
-#' @param lcl a vector of lower censoring limits, or a number assuming constant limit, default = \code{NULL}, indicating no lower censoring limit.
-#' @param ucl a vector of upper censoring limits, or a number assuming constant limit, default = \code{NULL}, indicating no upper censoring limit.
-#' @param p the order of AR model for the regression errors, default = 1.
-#' @param prmtrX the initial value for the parameters of \code{x}, default = \code{NULL}.
-#' @param prmtrAR the initial value for the AR coefficients, default = \code{NULL}.
-#' @param sigma the initial value for the standard deviation of the innovations of the AR process for regression errors, default = \code{NULL}.
-#' @param y.na.action a string indicating how to deal with NA values in \code{y}. If "skip", the corresponding value will be skipped, furthermore, the \code{p} values after them will be used as (re-)starting points to calculate the quasi log-likelihood. If "as.censored", the \code{y} value will be treated as left-censored with lower censoring limit replaced by positive infinity. Use "skip" if there are few segments of missing data, where the length of each segment of missing data is long.  Use "as.censored" if the missing values in \code{y} are scattered and random. N.B.: The row of data with NA values in \code{x} will always have the "skip" effect in \code{y}.
-#' @param addMu logic indicating whether a constant parameter mu as the stationary mean  when \code{x=NULL} should be included, default = \code{TRUE}.
-#' @param tol the tolerance in estimating the parameters, default = 1.0e-4.
-#' @param max.iter maximum number of iterations allowed when estimating parameters, default = 100.
-#' @param CI.compute bool value to indicate if the confidence interval for the
-#' parameter is to be constructed, default = \code{FALSE}, as it will take time to run the parametric bootstrap.
-#' @param CI.level numeric value in (0,1) to get the \code{CI.level} confidence interval for the parameters, default = 0.95.
-#' @param b number of bootstrap samples when estimating confidence interval for the parameters, default = 1000.
-#' @param b.robust logical, if \code{TRUE}, the innovation sequences of AR model of regression errors for the bootstrapping confidence interval will be sampled from simulated residuals, otherwise they will be sampled from normal distribution with estimated standard deviation, default = \code{FALSE}.
-#' @param init.method a string representing the method used to initialize the parameters if any of \code{prmtrX}, \code{prmtrAR}, \code{sigma} is \code{NULL}. The "biased" method is always available, as it uses maximum likelihhood estimator after replacing the censored observations by the corresponding censoring limits. The "consistent" method is only available for left censored data. Note that the "consistent" method may produce initial estimates with non-stationary AR coefficients or negative variance of the innovation sequences, in which case, the "biased" method will be used again as initial estimator and in the returned object the attribute \code{fallBackToBiased} will be set \code{TRUE}. Default="biased".
-#' @param cenTS an optional argument to pass a \code{cenTS} object which contain the data used, used in \code{carx.formula}. Default = \code{NULL}.
-#' @param verbose logical value indicates whether to print intermediate information such as the progress of the estimation procedure, and summary of iterations, default = FALSE.
+#' Estimate a CARX model, and compute the standard errors and confidence intervals of the parameter 
+#' estimates by parametric bootstrap.
+#' 
+#' @param y a vector of possibly censored responses. 
+#' @param x a matrix of covariates, or some object which can be coerced to matrix. Default=\code{NULL}, 
+#'  indicating a pure AR model for \code{y}.
+#' @param ci a vector of numeric values. If its i-th value is zero (negative, positive), then the 
+#'  corresponding element of 
+#' \code{y} is uncensored (left, right censored). 
+#'  Default = \code{NULL}, indicating no censoring.
+#' @param lcl a vector of lower censoring limits, or a number assuming constant limit. 
+#'  Default = \code{NULL}, indicating no lower censoring limit.
+#' @param ucl a vector of upper censoring limits, or a number assuming constant limit.
+#'  Default = \code{NULL}, indicating no upper censoring limit.
+#' @param p the AR order  for the regression errors. Default = 1.
+#' @param prmtrX the initial values of the regression parameters for \code{x}.
+#'  Default = \code{NULL}.
+#' @param prmtrAR the initial values of the AR coefficients.
+#'  Default = \code{NULL}.
+#' @param sigma the initial value of the innovation (noise) standard deviation.
+#'  Default = \code{NULL}.
+#' @param y.na.action a string indicating how to deal with missing (NA) values in \code{y}. 
+#'  If it is set to "skip", cases containing a missing value will be skipped, so that the 
+#'  estimating equation of future cases will be conditional on 
+#'  the most recent \code{p} complete cases after the skipped case. 
+#'  If "as.censored", the \code{y} value will be 
+#'  treated as left-censored with lower censoring limit replaced by positive infinity. 
+#'  The user may choose to use "skip" if there exist few long gaps in the time series of
+#'  response. Use "as.censored" if the missing values in \code{y} are many and scattered in time. 
+#'  N.B.: The presence of any missing values in \code{x} will automatically hard-code \code{y.na.action} 
+#'  to be "skip".
+#' @param addMu logical, indicating whether to include an intercept in case \code{x=NULL}. 
+#'  Default = \code{TRUE}.
+#' @param tol the tolerance level used in the stopping criterion. Default = 1.0e-4.
+#' @param max.iter maximum number of iterations allowed in the optimization. Default = 100.
+#' @param CI.compute logical value to indicate whether to compute the confidence intervals for the
+#'  parameters. Default = \code{FALSE}, as it can be time-consuming to run the parametric bootstrap.
+#' @param CI.level numeric value in (0,1) representing the confidence level. Default = 0.95.
+#' @param b number of bootstrap replicates used for computing the boostrap confidence intervals.
+#'  Default = 1000.
+#' @param b.robust logical, if \code{TRUE}, the innovations are re-sampled from the simulated residuals; 
+#'  otherwise they are re-sampled from a centered normal distribution with the estimated standard deviation.
+#'  Default = \code{FALSE}.
+#' @param init.method a string selecting a procedure ("biased", or "consistent") 
+#'  for deteriming the initial values, in case there 
+#'  are no initial values for some parameters, i.e., one of \code{prmtrX}, \code{prmtrAR}, \code{sigma} 
+#'  is \code{NULL}. The "biased" method is always available, 
+#'  as it uses maximum gaussian likelihood estimator with the data replacing any censored observation by its 
+#'  corresponding censoring limit. The "consistent" method is only available for left censored data. 
+#'   Note that the "consistent" method may produce initial estimates with non-stationary AR coefficients 
+#'   or negative innovation variance, in which case, the function will fall back to the "biased" method 
+#'   for constucting the initial values (when this happens, the attribute \code{fallBackToBiased} of the returned object will 
+#'   be set to \code{TRUE}.)  Default="biased".
+#' @param cenTS an optional argument to pass a \code{cenTS} object which contain the data used, 
+#'  when \code{carx.formula} is invoked. Default = \code{NULL}.
+#' @param verbose logical value indicates whether to print intermediate results for monitoring the 
+#'  the progress of the iterative estimation procedure. Default = FALSE.
 #' @param ... not used.
 #' @return a CARX object of the estimated model.
 #' @export
@@ -710,12 +740,17 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 
 #' A formula interface to the \code{carx} method
 #'
-#' This interface will use the supplied \code{formula} and data provided by \code{data} and other arguments in \code{...} to invoke the \code{carx.default} method. This is the preferred way of calling the \code{carx.default} function. Also, it is advised to create a \code{cenTS} object with \code{y}, \code{x}, \code{lcl},\code{ci}, and \code{ucl}.
+#' This interface will use the supplied \code{formula} and data provided by \code{data} and other arguments 
+#' in \code{...} to invoke the \code{carx.default} method. This is the preferred way of calling the 
+#' \code{carx.default} function. The data and censoring information are best passed to the function via
+#' a \code{cenTS} object comprising 
+#' \code{y}, \code{x}, \code{ci}, \code{lcl}, and \code{ucl}.
 #'
 #'
-#' @seealso \code{\link{cenTS}} for how to construct a \code{cenTS} object.
+#' @seealso \code{\link{cenTS}} on how to construct a \code{cenTS} object.
 #' @param formula the formula.
-#' @param data the data consisting of the \code{y}, \code{x}, \code{lcl},\code{ci}, and \code{ucl}, can be a \code{list}, \code{data.frame}, or a \code{\link{cenTS}} object.
+#' @param data the data consisting of the \code{y}, \code{x}, \code{lcl},\code{ci}, and \code{ucl} objects;
+#'  can be a \code{list}, \code{data.frame}, or a \code{\link{cenTS}} object.
 #' @param ... other arguments supplied to \code{\link{carx.default}}.
 #' @export
 #' @examples
@@ -763,7 +798,7 @@ carx.formula <- function(formula, data=list(),...)
 #' The quasi-log-likelihood of a \code{carx} object
 #' @param object a fitted \code{carx} object.
 #' @param ... not used.
-#' @return the quasi-log-likelihood.
+#' @return the quasi-log-likelihood value.
 #' @export
 logLik.carx <- function(object,...)
 {
@@ -772,13 +807,14 @@ logLik.carx <- function(object,...)
 	ret
 }
 
-#' Compute the  AIC equivalent of a fitted \code{carx} object
+#' Compute the  AIC of a fitted \code{carx} object
 #'
-#' Return the AIC equivalent of a fitted \code{carx} object where the log-likelihood is replaced by the quasi-log-likelihood.
+#' Return the AIC of a fitted \code{carx} object where the maximum log-likelihood is replaced by the 
+#' maximum quasi-log-likelihood.
 #' @param object a fitted  \code{carx} object.
 #' @param ... not used.
-#' @param k penalty for the number of parameters, default = 2.
-#' @return the AIC value
+#' @param k penalty multiplier for the number of parameters. Default = 2.
+#' @return the AIC value = -2*maximum quasi-log-likelihood+k*number of parameters
 #' @export
 AIC.carx <- function(object,...,k=2)
 {
@@ -869,7 +905,7 @@ summary.carx <- function(object,...)
 	res
 }
 
-#' Print the summary of an \code{carx} object
+#' Print a summary of an \code{carx} object
 #' @param x a summary of an \code{carx} object.
 #' @param ... not used.
 #' @return none.

@@ -1,10 +1,14 @@
 
 #' Detecting outliers in a  \code{carx} model.
 #'
-#' This is an internal function. It tests for additional outlier one at a time, for each time point, as described in Wang and Chan (2015), adjusted for multiplicity of testing. If the test result is significant, the function augments the location of the most significant outlier to the vector of outlier indices, i.e, the \code{outlier.indices} in the object returned by the function.
+#' This is an internal function. It tests for additional outlier one at a time, for each time point, as described in
+#'  Wang and Chan (2015), adjusted for multiplicity of testing. If the test result is significant, the function 
+#'  augments the location of the most significant outlier to the vector of outlier indices, 
+#'  i.e, the \code{outlier.indices} in the object returned by the function.
 #' @param object a \code{carx} object
 #' @keywords internal
-#' @return a possibly updated \code{object} which will have an attribute \code{outlier.indices} denoting the indices of outliers with the new index of outlier appended, if any outlier is detected.
+#' @return a possibly updated \code{object} which will have an attribute \code{outlier.indices} 
+#' denoting the indices of outliers with the new index of outlier appended, if any outlier is detected.
 ot.carx <- function(object)
 {
 	#message("detecting outliers")

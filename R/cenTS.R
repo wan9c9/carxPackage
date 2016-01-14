@@ -1,17 +1,26 @@
-#' Create censored time series object of \code{cenTS} class
+#' Create a censored time series object of \code{cenTS} class
 #'
-#' Create a censored time series object of \code{cenTS} class. For each series, it consists of the values,
-#' the name of which can be specified by the user, and by default is "value",
-#'  and the vectors of lower/upper censoring limits denoted by \code{lcl} and \code{ucl} respectively. The vector of censoring indicators, i.e., \code{ci}, is also in in the object.
-#'  Additional related variables can be stored and provided in the construction function, whose names are stored in \code{xreg}. All variable values are assumed to be of the same length of and thus aligned with the main censored time series. \code{cenTS} inherits from \link[xts]{xts}.
+#' Create a censored time series response object of \code{cenTS} class. Default name of the response is "value",
+#'  with the vectors of lower/upper censoring limits denoted by \code{lcl} and \code{ucl} respectively.
+#'  The vector of censoring indicators, i.e., \code{ci}, is part of the \code{cenTS} object.
+#'  Additional related variables can be stored and provided in the construction function, whose names
+#'  are stored in \code{xreg}. All variable values are assumed to be of the same length of and thus
+#'  aligned with the censored response time series. \code{cenTS} inherits from \link[xts]{xts}.
 #' @param order.by the index vector, must be a vector of time/date.
 #' @param value the value vector.
-#' @param lcl the vector of lower censoring limits, or a single numeric representing constant limit, default = \code{NULL} indicating no lower limit.
-#' @param ucl the vector of upper censoring limits, or a single numeric representing constant limit, default = \code{NULL} indicating no upper limit.
-#' @param ci the vector of censoring indicators, each value should be -1, 0, and 1 if the corresponding observation is left censored, observed, and right censored respectively. Default = NULL, in which case, the function will compute \code{ci} by \code{value}, \code{lcl} and \code{ucl}. If \code{ci} is not NULL, the function will check the consistency of the data, assuming the observed values less (greater) than or equal to left (right) censoring limits are censored, and are observed otherwise. The function will stop if inconsistent results are found.
+#' @param lcl the vector of lower censoring limits, or a single numeric representing the constant limit.
+#'  Default = \code{NULL} indicating no lower limit.
+#' @param ucl the vector of upper censoring limits, or a single numeric representing the constant limit.
+#'  Default = \code{NULL} indicating no upper limit.
+#' @param ci the vector of censoring indicators whose value is -1 (0, 1)
+#' if the corresponding response is left censored  (observed, right censored).
+#' Default = \code{NULL}, in which case, the function will compute \code{ci} by \code{value}, \code{lcl}
+#' and \code{ucl}. If \code{ci} is not \code{NULL}, the function will check the consistency of the data,
+#' assuming the observed values less (greater) than or equal to left (right) censoring limits are censored,
+#' and are observed otherwise. The function will stop if inconsistent results are found.
 #' @param value.name the name of the value, default = "value".
 #' @param ... additional variables, must be able to be coerced to a \code{data.frame}.
-#' @return a \code{cenTS} object, all censored observations will be assigned as the corresponding the censoring limit.
+#' @return a \code{cenTS} object, any censored observation will be replaced by its corresponding censoring limit.
 #' @export
 
 #' @examples
@@ -145,6 +154,17 @@ cenTS <- function(value, order.by,
 #' @param ... not used.
 #' @return none.
 #' @export
+#' @examples
+#' strDates <- c("2000-01-01", "2000-01-02", "2000-01-03", "2000-01-04", "2000-01-05")
+#' ts <- cenTS(value=c(1,-2,1,NA,0),
+#'             order.by=as.Date(strDates,"%Y-%m-%d"),
+#'             lcl=c(-3,-2,-1,-1,0),
+#'             ucl=c(3,2,1,1,1),
+#'             x=c(1,1,1,1,1),
+#'             y=c(2,2,2,2,2))
+#'  print(ts)
+#'
+
 print.cenTS <- function (x,...)
 {
   print(xts::as.xts(x))
@@ -157,7 +177,17 @@ print.cenTS <- function (x,...)
 #' @return the list in \code{xreg}.
 #' @seealso \code{\link{cenTS}}.
 #' @export
+#' @examples
+#' strDates <- c("2000-01-01", "2000-01-02", "2000-01-03", "2000-01-04", "2000-01-05")
+#' ts <- cenTS(value=c(1,-2,1,NA,0),
+#'             order.by=as.Date(strDates,"%Y-%m-%d"),
+#'             lcl=c(-3,-2,-1,-1,0),
+#'             ucl=c(3,2,1,1,1),
+#'             x=c(1,1,1,1,1),
+#'             y=c(2,2,2,2,2))
+#'  xreg(ts)
 #'
+
 xreg <- function(object) UseMethod("xreg")
 
 #' Return the \code{xreg} part of the \code{cenTS} object
@@ -165,7 +195,15 @@ xreg <- function(object) UseMethod("xreg")
 #' @return the list in \code{xreg}.
 #' @seealso \code{\link{cenTS}}.
 #' @export
-#'
+#' @examples
+#' strDates <- c("2000-01-01", "2000-01-02", "2000-01-03", "2000-01-04", "2000-01-05")
+#' ts <- cenTS(value=c(1,-2,1,NA,0),
+#'             order.by=as.Date(strDates,"%Y-%m-%d"),
+#'             lcl=c(-3,-2,-1,-1,0),
+#'             ucl=c(3,2,1,1,1),
+#'             x=c(1,1,1,1,1),
+#'             y=c(2,2,2,2,2))
+#'  xreg(ts)
 xreg.cenTS <- function(object)
 {
   if(!is.null(attributes(object)$xreg))
@@ -177,9 +215,19 @@ xreg.cenTS <- function(object)
 
 #' Plot a \code{cenTS} object
 #' @param x a \code{cenTS} object.
-#' @param type,auto.grid,major.ticks,minor.ticks,major.format,bar.col,candle.col,ann,axes,ylim,main,... standard parameters to control the plot.
+#' @param type,auto.grid,major.ticks,minor.ticks,major.format,bar.col,candle.col,ann,axes,ylim,main,...
+#' standard parameters to control the plot.
 #' @seealso \code{\link[xts]{plot.xts}}.
 #' @export
+#' @examples
+#' strDates <- c("2000-01-01", "2000-01-02", "2000-01-03", "2000-01-04", "2000-01-05")
+#' ts <- cenTS(value=c(1,-2,1,NA,0),
+#'             order.by=as.Date(strDates,"%Y-%m-%d"),
+#'             lcl=c(-3,-2,-1,-1,0),
+#'             ucl=c(3,2,1,1,1),
+#'             x=c(1,1,1,1,1),
+#'             y=c(2,2,2,2,2))
+#'  plot(ts)
 plot.cenTS <- function(x, type = "l", auto.grid = TRUE, major.ticks = "auto",
     minor.ticks = TRUE, major.format = TRUE, bar.col = "grey",
     candle.col = "white", ann = TRUE, axes = TRUE,ylim=NULL,main=NULL, ...)

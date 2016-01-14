@@ -1,6 +1,6 @@
 #' \code{carx}: A package to fit Censored Auto-Regressive model with eXogenous covariates (CARX)
 #'
-#' \code{carx} is a package to estimate the parameters of the model Censored AutoRegressive model with eXogenous
+#' \code{carx} is a package to estimate the parameters of the Censored AutoRegressive model with eXogenous
 #' covariates (CARX), which can also be viewed as regression models with
 #' censored responses
 #' and autoregressive residuals. \code{carx} allows left, right, or interval

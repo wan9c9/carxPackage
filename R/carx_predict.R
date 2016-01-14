@@ -3,8 +3,8 @@
 #'
 #' @param y response data used to fit the model.
 #' @param x covariate matrix  used to fit the model.
-#' @param prmtrX coefficients for covariates.
-#' @param prmtrAR coefficients for AR model of the residuals.
+#' @param prmtrX regression coefficients for covariates.
+#' @param prmtrAR AR coefficients for the regression errors.
 #' @param sigma innovation standard deviation.
 #' @keywords internal
 #' @inheritParams predict.carx
@@ -37,7 +37,7 @@ predictARX <- function(y,x,prmtrX,prmtrAR,sigma,n.ahead,newxreg,CI.level=0.95)
           coefs[i,] <- coefs[i,] + prmtrAR[j]*coefs[i-j,]
       }
     }
-    predSE[i] <- sigma^2*sum(coefs[i,]^2)
+    predSE[i] <- sigma*sqrt(sum(coefs[i,]^2))
   }
   yPred <- yPred[-(1:p)]
   probs <- c((1-CI.level)/2,(1+CI.level)/2)
@@ -154,7 +154,7 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
   }
 	else
 	{
-	  message("latest p observations are censored or we'll use simulated residuals")
+	  message("Latest p observations are censored or we'll use simulated residuals")
 	  eta <- object$y[iStart:nObs] - object$x[iStart:nObs,]%*%object$prmtrX
   	eta <- c(eta, rep(0,n.ahead))
     yPred <- c(object$y[iStart:nObs], rep(0,n.ahead))
@@ -184,7 +184,7 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
       censored <- tmpCensorIndicator[tmpCensorIndicator!=0]
       tmpLower[censored>0] <- object$ucl[nObs:iStart][tmpCensorIndicator>0]
       tmpUpper[censored<0] <- object$lcl[nObs:iStart][tmpCensorIndicator<0]
-      yCensored <- tmvtnorm::rtmvnorm(nRep,tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
+      yCensored <- tmvtnorm::rtmvnorm(nRep,tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)#,algorithm="gibbs")
     }
 
     if(useSimulatedResidual)
