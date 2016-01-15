@@ -31,13 +31,14 @@
 #' @examples
 #' dataSim <- carxSimCenTS(nObs=100)
 #' fmls <- list(M1=y~X1,M2=y~X1+X2,M3=y~X1+X2-1)
-#' \dontrun{carxSelect(y~X1,max.ar=3,data=dataSim)}
-#' \dontrun{carxSelect(formulas=fmls,max.ar=3,data=dataSim)}
+#' \dontrun{cs = carxSelect(y~X1,max.ar=3,data=dataSim)}
+#' \dontrun{cs = carxSelect(formulas=fmls,max.ar=3,data=dataSim)}
 #'
 carxSelect <- function(formulas, max.ar, data=list(), detect.outlier=F
                        #,verbose=FALSE
                        ,...)
 {
+  dotsArgs = list(...)
   if(typeof(formulas) == 'language')
     formulas <- list(M1=formulas)
   if(is.null(formulas))
@@ -57,7 +58,10 @@ carxSelect <- function(formulas, max.ar, data=list(), detect.outlier=F
     for( p in 1:max.ar)
     {
       #message(paste("Trying model fomula:",deparse(f), ", with AR order", p))
-      tmp <- carx(f,data=data, p=p, CI.compute=FALSE,...)
+      toPass = c(list(formula=f,data=data,p=p),dotsArgs)
+      toPass$CI.compute=FALSE #to save time
+      #tmp <- carx(f,data=data, p=p, CI.compute=FALSE,...)
+      tmp <- do.call(carx,toPass)
       if(detect.outlier)
         tmp <- outlier(tmp)
       a <- AIC(tmp)
@@ -78,7 +82,7 @@ carxSelect <- function(formulas, max.ar, data=list(), detect.outlier=F
       }
     }
   }
-  if(length(list(...))>0)
+  if(length(dotsArgs)>0)
   {
     m1 <- carx(formula(m0), data=m0$data,p=m0$p,...)
     #outlier indices will be destroyed by the above command)

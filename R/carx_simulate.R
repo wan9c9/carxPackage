@@ -11,7 +11,7 @@
 #' @param nObs number of observations to be simulated.
 #' @param prmtrAR the AR parameter.
 #' @param prmtrX the regression parameters for X.
-#' @param sigmaEps the innovation standard deviation for the AR process.
+#' @param sigma the innovation standard deviation for the AR process.
 #' @param lcl the lower censor limit.
 #' @param ucl the upper censor limit.
 #' @param x optional matrix for X. Default = \code{NULL}, in which case X will be simulated from 
@@ -25,7 +25,7 @@
 #' @examples
 #' dat = carxSim()
 
-carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL,inno.dist=c("normal","t"),t.df=5)
+carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigma=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL,inno.dist=c("normal","t"),t.df=5)
 {
   stopifnot(t.df>2)
 	p <- length(prmtrAR)
@@ -36,13 +36,13 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps
 		set.seed(seed)
 
   if(inno.dist == "normal")
-    eps <- stats::rnorm(nObs,0, sigmaEps)
+    eps <- stats::rnorm(nObs,0, sigma)
   else
   {
     if(inno.dist == "t")
     {
       eps <- stats::rt(nObs,t.df)
-      eps <- eps*sigmaEps/(sqrt(t.df/(t.df-2)))
+      eps <- eps*sigma/(sqrt(t.df/(t.df-2)))
     }
   }
 
@@ -63,7 +63,7 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps
 
   if(inno.dist == "normal")
   {
-    covAr <- computeCovAR(prmtrAR,sigmaEps,lag=p)
+    covAr <- computeCovAR(prmtrAR,sigma,lag=p)
     eta[1:p] <- as.vector(mvtnorm::rmvnorm(1,sigma=covAr))
   }
   else
@@ -72,7 +72,7 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps
     {
       nPreSample <- 1000
       tmpEps <- stats::rt(nPreSample,t.df)
-      tmpEps <- tmpEps*sigmaEps/(sqrt(t.df/(t.df-2)))
+      tmpEps <- tmpEps*sigma/(sqrt(t.df/(t.df-2)))
       tmpEta <- rep(0,nPreSample)
       for(i in (p+1):nPreSample)
         tmpEta[i] <- prmtrAR%*%tmpEta[(i-1):(i-p)] + tmpEps[i]
@@ -119,9 +119,9 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps
 #' @export
 #' @examples
 #' cts = carxSimCenTS()
-carxSimCenTS <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigmaEps=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL, value.name = 'y', end.date=Sys.Date(),inno.dist=c("normal","t"),t.df=5)
+carxSimCenTS <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigma=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL, value.name = 'y', end.date=Sys.Date(),inno.dist=c("normal","t"),t.df=5)
 {
-  ret <- carxSim(nObs,prmtrAR, prmtrX, sigmaEps, lcl, ucl, x, seed)
+  ret <- carxSim(nObs,prmtrAR, prmtrX, sigma, lcl, ucl, x, seed)
   #ret is a data.frame
   names(ret) <- c("value",names(ret)[-1])
   ret <- as.list(ret)

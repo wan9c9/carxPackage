@@ -76,7 +76,6 @@ carx <- function(y,...) UseMethod("carx")
 carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
        p=1,prmtrX=NULL,prmtrAR=NULL,sigma=NULL,
        y.na.action=c("skip","as.censored"),
-       #nonfiniteYAsCensored=TRUE,
        addMu=TRUE,
 			 tol=1e-4,max.iter=500,CI.compute=FALSE,CI.level=0.95,b=1000,b.robust=FALSE,
        init.method = c("biased","consistent"),
@@ -449,7 +448,7 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
     #)
 	}
 
-	updateSigmaEps <- function(){
+	updateSigma <- function(){
 		idx <- seq(1,nObs)[-skipIndex]
 		vec <- wkMean[idx,1] - trend[idx]
 		for(i in 1:p){
@@ -469,21 +468,21 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 		delta <- 0
 
 		newPrmtrAR <- updatePrmtrAR()
-		delta <- delta + sum(abs(newPrmtrAR - prmtrAR))
+		delta <- delta + sum((newPrmtrAR - prmtrAR)^2)
 		prmtrAR <<- newPrmtrAR
 
     if(xValid)
     {
       newPrmtrEV <- updatePrmtrEV()
-      delta <- delta + sum(abs(newPrmtrEV - prmtrX))
+      delta <- delta + sum((newPrmtrEV - prmtrX)^2)
       prmtrX <<- newPrmtrEV
     }
 
-		newSigmaEps <- updateSigmaEps()
-		delta <- delta + abs(newSigmaEps - sigma)
-		sigma <<- newSigmaEps
+		newSigma <- updateSigma()
+		delta <- delta + (newSigma - sigma)^2
+		sigma <<- newSigma
 
-    return(delta/sqrt(sum(prevPrmtr)^2))
+    return(sqrt(delta/sum(prevPrmtr)^2))
 	}
 
 	estimatePrmtr <- function(tol,max.iter)
