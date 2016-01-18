@@ -9,7 +9,7 @@
 #' none of \eqn{Y_t;t=\tau+p-1,...,\tau} is censored. In the case that \eqn{\tau = t-p}, 
 #' the fitted value can be readily computed; otherwise, the fitted value is computed as the 
 #' mean of the distribution 
-#' \eqn{D_t} by the function \code{\link[tmvtnorm]{mtmvnorm}} from the package \pkg{{tmvtnorm}}.
+#' \eqn{D_t} by the function \code{mtmvnorm} from the package \pkg{{tmvtnorm}}.
 
 #' @param object a fitted \code{carx} object.
 #' @param ... not used.

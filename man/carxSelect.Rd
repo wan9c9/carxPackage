@@ -45,8 +45,12 @@ ranging from 1 to \code{mar.ar}
 \examples{
 dataSim <- carxSimCenTS(nObs=100)
 fmls <- list(M1=y~X1,M2=y~X1+X2,M3=y~X1+X2-1)
-\dontrun{carxSelect(y~X1,max.ar=3,data=dataSim)}
-\dontrun{carxSelect(formulas=fmls,max.ar=3,data=dataSim)}
+\dontrun{cs = carxSelect(y~X1,max.ar=3,data=dataSim)}
+\dontrun{cs = carxSelect(formulas=fmls,max.ar=3,data=dataSim)}
+\dontrun{
+  #To compute confidence intervals for the selected model, call with CI.compute=TRUE.
+  cs = carxSelect(formulas=fmls,max.ar=3,data=dataSim,CI.compute=TRUE)
+}
 
 }
 

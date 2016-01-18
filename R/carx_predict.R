@@ -70,6 +70,66 @@ predictARX <- function(y,x,prmtrX,prmtrAR,sigma,n.ahead,newxreg,CI.level=0.95)
 #' @return A list consisting of \code{fit}, \code{se.fit}, and \code{ci} representing the predictions,
 #' standard errors of predictions, and confidence intervals respectively.
 #' @export
+#' @examples
+#'  #This is the function to run a simulation study about the empirical coverage rate of 
+#'  #the predictive confidence intervals,
+#'  runSimPredCR <- function(nRep=200,nObs=200,n.ahead=10,
+#'                           saveRslt=FALSE,saveDir='./testPredictCR',
+#'                           seed=NULL)
+#'  {
+#'    if(!is.null(seed))
+#'      set.seed(seed)
+#'    crMat = matrix(nrow=n.ahead,ncol=nRep)
+#'    if(saveRslt)
+#'    {
+#'      dir.create(saveDir,showWarnings=FALSE,recursive=TRUE)
+#'    }
+#'
+#'    replication = list()
+#'    simSingle <- function(iRep)
+#'    {
+#'      message(sprintf("iRep: %04d",iRep))
+#'      sdata = carxSim(nObs=nObs+n.ahead)
+#'      trainingData = sdata[1:nObs,]
+#'      testData = sdata[-(1:nObs),]
+#'      mdl = carx(y~X1+X2-1,data=trainingData,p=2)
+#'      newxreg = testData[,c('X1','X2')]
+#'      predVal = predict(mdl,newxreg=newxreg,n.ahead=n.ahead)
+#'      crInd = (predVal$ci[,1] <= testData$y) & (predVal$ci[,2] >= testData$y)
+#'      crMat[,iRep] = crInd
+#'      list(trainingData=trainingData,
+#'           testData=testData,
+#'           fitted=mdl,
+#'           predVal = predVal,
+#'           crInd= crInd)
+#'    }
+#'    replication = lapply(1:nRep,simSingle)
+#'    crMat = sapply(replication,FUN=function(x){x$crInd})
+#'    print(crMat)
+#'    crPred = apply(crMat,1,mean)
+#'    message("empirical coverage rate:")
+#'    print(crPred)
+#'    if(saveRslt)
+#'    { 
+#'      save(replication,file=paste0(saveDir,'/replication.RData'))
+#'      save(crMat,file=paste0(saveDir,'/crMat.RData'))
+#'      save(crPred,file=paste0(saveDir,'/crPred.RData'))
+#'    }
+#'
+#'    list(replication=replication,crMat=crMat,meanCR=crPred)
+#'  }
+
+#'  #note that nRep=2 is for illustration only, for more stable result, use nRep>=500.
+#'  simPredCR = runSimPredCR(nRep=2,nObs=100)
+
+
+#'  \dontrun{
+#'    # for more stable simulation result, run with nRep = 500.
+#'    simPredCR = runSimPredCR(nRep=500,nObs=100)
+#'    message("Empirical coverage rate:")
+#'    print(simPredCR$meanCR)
+#'  }
+
 predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,na.action=NULL,useSimulatedResidual=FALSE,...)
 {
 

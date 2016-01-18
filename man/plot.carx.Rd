@@ -40,15 +40,15 @@ If the fitted object contains the data and censored  information in a \code{cenT
 
 #case 1: plot with cenTS object in the object, note that the x-axis is in date.
 dat = carxSimCenTS(nObs=100,seed=0)
-model0 <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
 #use default settings
-plot(model0)
+plot(mdl)
 
 #case 2: plot without cenTS object in the object, note that the x-axis is a vector of numbers.
 dat = carxSim(nObs=100,seed=0)
-model0 <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, p=2)
+mdl <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, p=2)
 #or simply call
-model0 <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
-plot(model0)
+mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+plot(mdl)
 }
 

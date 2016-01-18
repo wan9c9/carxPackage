@@ -35,6 +35,63 @@ standard errors of predictions, and confidence intervals respectively.
 \description{
 Predict the future values of an fitted \code{carx} object. If the model has non-null covariate \code{x} other than the constant mean, the new observations in \code{x} must be supplied via \code{newxreg}. The model prediction is done in a similar way as in \code{fitted.carx} by identifying the latest \eqn{p} consecutive observed responses in the data used to estimate model, then compute the mean of the conditional distribution of the future values given the information since the latest p consecutive observed values and the supplied new covariate values. For more details, see Wang and Chan (2015).
 }
+\examples{
+ #This is the function to run a simulation study about the empirical coverage rate of 
+ #the predictive confidence intervals,
+ runSimPredCR <- function(nRep=200,nObs=200,n.ahead=10,
+                          saveRslt=FALSE,saveDir='./testPredictCR',
+                          seed=NULL)
+ {
+   if(!is.null(seed))
+     set.seed(seed)
+   crMat = matrix(nrow=n.ahead,ncol=nRep)
+   if(saveRslt)
+   {
+     dir.create(saveDir,showWarnings=FALSE,recursive=TRUE)
+   }
+
+   replication = list()
+   simSingle <- function(iRep)
+   {
+     message(sprintf("iRep: \%04d",iRep))
+     sdata = carxSim(nObs=nObs+n.ahead)
+     trainingData = sdata[1:nObs,]
+     testData = sdata[-(1:nObs),]
+     mdl = carx(y~X1+X2-1,data=trainingData,p=2)
+     newxreg = testData[,c('X1','X2')]
+     predVal = predict(mdl,newxreg=newxreg,n.ahead=n.ahead)
+     crInd = (predVal$ci[,1] <= testData$y) & (predVal$ci[,2] >= testData$y)
+     crMat[,iRep] = crInd
+     list(trainingData=trainingData,
+          testData=testData,
+          fitted=mdl,
+          predVal = predVal,
+          crInd= crInd)
+   }
+   replication = lapply(1:nRep,simSingle)
+   crMat = sapply(replication,FUN=function(x){x$crInd})
+   print(crMat)
+   crPred = apply(crMat,1,mean)
+   message("empirical coverage rate:")
+   print(crPred)
+   if(saveRslt)
+   { 
+     save(replication,file=paste0(saveDir,'/replication.RData'))
+     save(crMat,file=paste0(saveDir,'/crMat.RData'))
+     save(crPred,file=paste0(saveDir,'/crPred.RData'))
+   }
+
+   list(replication=replication,crMat=crMat,meanCR=crPred)
+ }
+ #note that nRep=2 is for illustration only, for more stable result, use nRep>=500.
+ simPredCR = runSimPredCR(nRep=2,nObs=100)
+ \dontrun{
+   # for more stable simulation result, run with nRep = 500.
+   simPredCR = runSimPredCR(nRep=500,nObs=100)
+   message("Empirical coverage rate:")
+   print(simPredCR$meanCR)
+ }
+}
 \references{
 Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables." Submitted.
 }

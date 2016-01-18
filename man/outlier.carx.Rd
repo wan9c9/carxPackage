@@ -20,6 +20,18 @@ an updated \code{carx} object. If any outlier is detected, its index will be sto
 Detect all outliers of a \code{carx} object and update the model if any outlier is detected.
 It tests for the presence of outliers one at a time, for each time point, adjusted for multiplicity of testing, as described in Wang and Chan (2015).
 }
+\examples{
+sigma = 0.6
+nObs = 100
+dat = carxSimCenTS(nObs=nObs,sigma=sigma,ucl=Inf)
+dat$y[as.integer(nObs/2)] = dat$y[as.integer(nObs/2)] + 4*sd(dat$y)
+mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+oc = outlier(mdl)
+#note the outlier indices in the output:
+print(oc)
+#note the updated formula:
+print(formula(oc))
+}
 \references{
 Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables." Submitted.
 }

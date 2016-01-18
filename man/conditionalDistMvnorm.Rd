@@ -24,9 +24,5 @@ of a random vector given the rest elements, where the random vector follows a mu
 This function calculates the conditional mean & variance of a multivariate normal distribution,
 with (\code{meanVec}, \code{varMat}), conditional on y at the indices \code{conditionalIndex}.
 }
-\examples{
-conditionalDistMvnorm(c(-0.5,0.5), c(2,4), c(1,2,3,4),matrix(
-c(1,0.3,0.2,0.1, 0.3,1,-0.1,0.3,0.2,-0.1,1,0.1,0.1,0.3,0.1,1),
-nrow=4,ncol=4,byrow=TRUE))
-}
+\keyword{internal}
 

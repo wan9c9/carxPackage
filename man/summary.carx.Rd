@@ -17,4 +17,9 @@ a summary.
 \description{
 Summarize the fitted \code{carx} object
 }
+\examples{
+dat = carxSim(nObs=100,seed=0)
+mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+summary(mdl)
+}
 

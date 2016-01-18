@@ -24,12 +24,12 @@ where \eqn{1 \le \tau \le t-p} is the largest integer \eqn{t} such that
 none of \eqn{Y_t;t=\tau+p-1,...,\tau} is censored. In the case that \eqn{\tau = t-p}, 
 the fitted value can be readily computed; otherwise, the fitted value is computed as the 
 mean of the distribution 
-\eqn{D_t} by the function \code{\link[tmvtnorm]{mtmvnorm}} from the package \pkg{{tmvtnorm}}.
+\eqn{D_t} by the function \code{mtmvnorm} from the package \pkg{{tmvtnorm}}.
 }
 \examples{
 dat = carxSim(nObs=100,seed=0)
 mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
 #compute the fitted values
-fv = fitted(mdl,type="raw")
+fv = fitted(mdl)
 }
 

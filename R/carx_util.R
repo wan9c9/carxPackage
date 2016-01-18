@@ -10,11 +10,11 @@
 #' @param meanVec the mean vector the joint multivariate normal distribution.
 #' @param varMat the variance-covariance matrix of the joint multivariate normal distribution.
 #' @return a list consisting of 'mean' and 'var' representing the conditional mean and variance respectively.
-#' @export
-#' @examples
-#' conditionalDistMvnorm(c(-0.5,0.5), c(2,4), c(1,2,3,4),matrix(
-#' c(1,0.3,0.2,0.1, 0.3,1,-0.1,0.3,0.2,-0.1,1,0.1,0.1,0.3,0.1,1),
-#' nrow=4,ncol=4,byrow=TRUE))
+#' @keywords internal
+# @examples
+# conditionalDistMvnorm(c(-0.5,0.5), c(2,4), c(1,2,3,4),matrix(
+# c(1,0.3,0.2,0.1, 0.3,1,-0.1,0.3,0.2,-0.1,1,0.1,0.1,0.3,0.1,1),
+# nrow=4,ncol=4,byrow=TRUE))
 
 conditionalDistMvnorm <- function(y, conditionalIndex, meanVec, varMat)
 {
@@ -48,7 +48,7 @@ isStationaryAR <- function(arPrmtr)
 #' @param sigma the innovation standard deviation.
 #' @param lag the number of lags to be computed, including lag zero.
 #' @return the covariance matrix.
-#' @export
+#' @keywords internal
 computeCovAR <- function(arPrmtr, sigma, lag=length(arPrmtr)+1)
 {
 	roots <- polyroot(c(1,-arPrmtr))

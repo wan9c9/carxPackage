@@ -12,8 +12,8 @@
 #' @param prmtrAR the AR parameter.
 #' @param prmtrX the regression parameters for X.
 #' @param sigma the innovation standard deviation for the AR process.
-#' @param lcl the lower censor limit.
-#' @param ucl the upper censor limit.
+#' @param lcl the lower censoring limit.
+#' @param ucl the upper censoring limit.
 #' @param x optional matrix for X. Default = \code{NULL}, in which case X will be simulated from 
 #'  the standard normal distribution with dimensions determined by \code{nObs} and \code{prmtrX}.
 #' @param seed optional to set the seed of random number generator used by \code{R}, default=\code{NULL}.
@@ -27,6 +27,9 @@
 
 carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigma=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL,inno.dist=c("normal","t"),t.df=5)
 {
+  if(is.null(lcl)) lcl = -Inf
+  if(is.null(ucl)) ucl = Inf
+
   stopifnot(t.df>2)
 	p <- length(prmtrAR)
 	nX <- length(prmtrX)
@@ -121,7 +124,7 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigma=0.
 #' cts = carxSimCenTS()
 carxSimCenTS <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigma=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL, value.name = 'y', end.date=Sys.Date(),inno.dist=c("normal","t"),t.df=5)
 {
-  ret <- carxSim(nObs,prmtrAR, prmtrX, sigma, lcl, ucl, x, seed)
+    ret <- carxSim(nObs,prmtrAR, prmtrX, sigma, lcl, ucl, x, seed)
   #ret is a data.frame
   names(ret) <- c("value",names(ret)[-1])
   ret <- as.list(ret)

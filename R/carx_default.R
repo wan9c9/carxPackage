@@ -48,6 +48,7 @@ carx <- function(y,...) UseMethod("carx")
 #' @param b.robust logical, if \code{TRUE}, the innovations are re-sampled from the simulated residuals; 
 #'  otherwise they are re-sampled from a centered normal distribution with the estimated standard deviation.
 #'  Default = \code{FALSE}.
+#' @param b.show.progress logical, if \code{TRUE}, a text bar will be displayed to show the progress of bootstrap when computing the confidence intervals of the parameter estimates. 
 #' @param init.method a string selecting a procedure ("biased", or "consistent") 
 #'  for deteriming the initial values, in case there 
 #'  are no initial values for some parameters, i.e., one of \code{prmtrX}, \code{prmtrAR}, \code{sigma} 
@@ -67,17 +68,15 @@ carx <- function(y,...) UseMethod("carx")
 #' @export
 #' @examples
 #' dat = carxSim(nObs=100,seed=0)
-#' model0 <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, p=2)
+#' mdl <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, p=2)
 #' #or simply call
-#' model0 <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
-#' #plot(model0)
-#' #tsdiag(model0)
+#' mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
 
 carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
        p=1,prmtrX=NULL,prmtrAR=NULL,sigma=NULL,
        y.na.action=c("skip","as.censored"),
        addMu=TRUE,
-			 tol=1e-4,max.iter=500,CI.compute=FALSE,CI.level=0.95,b=1000,b.robust=FALSE,
+			 tol=1e-4,max.iter=500,CI.compute=FALSE,CI.level=0.95,b=1000,b.robust=FALSE,b.show.progress=FALSE,
        init.method = c("biased","consistent"),
 			 cenTS=NULL,verbose=FALSE,...)
 {
@@ -592,11 +591,13 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 
 
 
-	bootstrapSample <- function(epsPool)
+	bootstrapSample <- function()
 	{
     if(b.robust)
+    {
+      epsPool <- residuals.carx(ret,type="raw")
       eps <- sample(epsPool,nObs)
-    else
+    }else
       eps <- stats::rnorm(nObs,0, sigma)
 
 		updateTrend()
@@ -616,27 +617,23 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 	bootstrapCI <- function(CI.level,b)
 	{
 
-		message(sprintf('Bootstraping CI'))
+		if(verbose) message(sprintf('Bootstrapping CI'))
 		yOriginal <- y #copy y as it will be overwritten
 
-    if(b.robust)
-      epsPool <- residuals.carx(ret,type="raw")
-    else
-      epsPool <- NULL
 
 		tmpResult <- matrix(0,b,getNPrmtr())
-		if(!verbose)pb <- txtProgressBar(1,b,style=3)
+		if(b.show.progress)pb <- txtProgressBar(1,b,style=3)
 		for(i in 1:b){
-			#message(sprintf('Bootstraping CI %i/%i',i,b))
-			if(!verbose) setTxtProgressBar(pb,i)
+			#message(sprintf('Bootstrapping CI %i/%i',i,b))
+			if(b.show.progress) setTxtProgressBar(pb,i)
 			setInitPrmtrForBootstrap()
-			bootstrapSample(epsPool)
+			bootstrapSample()
 			resetWK()
 			estimatePrmtr(tol,max.iter)
 			tmpResult[i,] <- getPrmtr()
 		}
 		ret$prmtrEstdBootstrap <<- tmpResult
-		if(!verbose) close(pb)
+		if(b.show.progress) close(pb)
 		qv <- c((1-CI.level)/2,1-(1-CI.level)/2)
 		for(j in 1:(getNPrmtr())){
 			CI[j,] <<- stats::quantile(tmpResult[,j],qv)
@@ -755,7 +752,7 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 #' @export
 #' @examples
 #' dat = carxSim(nObs=100,seed=0)
-#' model0 <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+#' mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
 
 carx.formula <- function(formula, data=list(),...)
 {
@@ -800,6 +797,12 @@ carx.formula <- function(formula, data=list(),...)
 #' @param ... not used.
 #' @return the quasi-log-likelihood value.
 #' @export
+#' @examples
+#' dat = carxSim(nObs=100,seed=0)
+#' mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+#' lk = logLik(mdl)
+
+
 logLik.carx <- function(object,...)
 {
 	ret <- object$logLik
@@ -816,6 +819,11 @@ logLik.carx <- function(object,...)
 #' @param k penalty multiplier for the number of parameters. Default = 2.
 #' @return the AIC value = -2*maximum quasi-log-likelihood+k*number of parameters
 #' @export
+#' @examples
+#' dat = carxSim(nObs=100,seed=0)
+#' mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+#' ic = AIC(mdl)
+
 AIC.carx <- function(object,...,k=2)
 {
 	val <- -2*object$logLik + k*object$npar
@@ -830,6 +838,12 @@ AIC.carx <- function(object,...,k=2)
 #' @param ... not used.
 #' @return none.
 #' @export
+#' @examples
+#' dat = carxSim(nObs=100,seed=0)
+#' mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+#' print(mdl)
+
+
 print.carx <- function(x,...)
 {
 	cat("Call:\n")
@@ -854,6 +868,12 @@ print.carx <- function(x,...)
 	cat("\nAIC:\n")
 	print(x$aic)
 
+  if(!is.null(x$outlier.indices))
+  {
+    cat('\nOutlier Indices:\n')
+    print(x$outlier.indices)
+  }
+
 
 	#cat("\nInitial estimates:\n")
 	#print(x$prmtrInit)
@@ -873,6 +893,11 @@ print.carx <- function(x,...)
 #' @param ... not used.
 #' @return a summary.
 #' @export
+#' @examples
+#' dat = carxSim(nObs=100,seed=0)
+#' mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+#' summary(mdl)
+
 summary.carx <- function(object,...)
 {
 	numDig <- function(x,d1,d2){
@@ -910,6 +935,12 @@ summary.carx <- function(object,...)
 #' @param ... not used.
 #' @return none.
 #' @export
+#' @examples
+#' dat = carxSim(nObs=100,seed=0)
+#' mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+#' summary(mdl)
+
+
 print.summary.carx <- function(x,...)
 {
 	cat("Call:\n")

@@ -23,7 +23,7 @@ a \code{cenTS} object comprising
 }
 \examples{
 dat = carxSim(nObs=100,seed=0)
-model0 <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
 }
 \seealso{
 \code{\link{cenTS}} on how to construct a \code{cenTS} object.

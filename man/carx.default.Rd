@@ -8,8 +8,8 @@
   p = 1, prmtrX = NULL, prmtrAR = NULL, sigma = NULL,
   y.na.action = c("skip", "as.censored"), addMu = TRUE, tol = 1e-04,
   max.iter = 500, CI.compute = FALSE, CI.level = 0.95, b = 1000,
-  b.robust = FALSE, init.method = c("biased", "consistent"), cenTS = NULL,
-  verbose = FALSE, ...)
+  b.robust = FALSE, b.show.progress = FALSE, init.method = c("biased",
+  "consistent"), cenTS = NULL, verbose = FALSE, ...)
 }
 \arguments{
 \item{y}{a vector of possibly censored responses.}
@@ -69,6 +69,8 @@ Default = 1000.}
 otherwise they are re-sampled from a centered normal distribution with the estimated standard deviation.
 Default = \code{FALSE}.}
 
+\item{b.show.progress}{logical, if \code{TRUE}, a text bar will be displayed to show the progress of bootstrap when computing the confidence intervals of the parameter estimates.}
+
 \item{init.method}{a string selecting a procedure ("biased", or "consistent") 
 for deteriming the initial values, in case there 
 are no initial values for some parameters, i.e., one of \code{prmtrX}, \code{prmtrAR}, \code{sigma} 
@@ -97,10 +99,8 @@ estimates by parametric bootstrap.
 }
 \examples{
 dat = carxSim(nObs=100,seed=0)
-model0 <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, p=2)
+mdl <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, p=2)
 #or simply call
-model0 <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
-#plot(model0)
-#tsdiag(model0)
+mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
 }
 

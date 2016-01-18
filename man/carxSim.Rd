@@ -5,7 +5,7 @@
 \title{Simulate  data from a \code{carx} model}
 \usage{
 carxSim(nObs = 200, prmtrAR = c(-0.28, 0.25), prmtrX = c(0.2, 0.4),
-  sigmaEps = 0.6, lcl = -1, ucl = 1, x = NULL, seed = NULL,
+  sigma = 0.6, lcl = -1, ucl = 1, x = NULL, seed = NULL,
   inno.dist = c("normal", "t"), t.df = 5)
 }
 \arguments{
@@ -15,11 +15,11 @@ carxSim(nObs = 200, prmtrAR = c(-0.28, 0.25), prmtrX = c(0.2, 0.4),
 
 \item{prmtrX}{the regression parameters for X.}
 
-\item{sigmaEps}{the innovation standard deviation for the AR process.}
+\item{sigma}{the innovation standard deviation for the AR process.}
 
-\item{lcl}{the lower censor limit.}
+\item{lcl}{the lower censoring limit.}
 
-\item{ucl}{the upper censor limit.}
+\item{ucl}{the upper censoring limit.}
 
 \item{x}{optional matrix for X. Default = \code{NULL}, in which case X will be simulated from 
 the standard normal distribution with dimensions determined by \code{nObs} and \code{prmtrX}.}

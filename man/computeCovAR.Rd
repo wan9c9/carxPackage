@@ -19,4 +19,5 @@ the covariance matrix.
 \description{
 Compute the covariance matrix of \eqn{(\eta_t,...,\eta_{t-lag})} for an AR model.
 }
+\keyword{internal}
 
