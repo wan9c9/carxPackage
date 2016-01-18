@@ -256,7 +256,7 @@ plot.cenTS <- function(x, type = "l", auto.grid = TRUE, major.ticks = "auto",
     graphics::plot(xycoords$x, xycoords$y, type = type, axes = FALSE, ann = FALSE, ylim=ylim,...)
 
 
-    if(!is.null(x$lcl) && all(is.finite(x$lcl)))
+    if(!is.null(x$lcl) && any(is.finite(x$lcl)))
     {
       graphics::lines(xycoords$x,x$lcl,col="red",lty=3)
       idx <- is.finite(x[,value.name]) & is.finite(x$lcl)
@@ -264,7 +264,7 @@ plot.cenTS <- function(x, type = "l", auto.grid = TRUE, major.ticks = "auto",
       graphics::points(xycoords$x[idx][idx2],x$lcl[idx][idx2],pch=2)
     }
 
-    if(!is.null(x$ucl) && all(is.finite(x$ucl)))
+    if(!is.null(x$ucl) && any(is.finite(x$ucl)))
     {
       graphics::lines(xycoords$x,x$ucl,col="red",lty=5)
       idx <- is.finite(x[,value.name]) & is.finite(x$ucl)

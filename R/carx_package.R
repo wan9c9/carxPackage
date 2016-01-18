@@ -37,5 +37,6 @@
 #'
 #' @docType package
 #' @name carx
-#' @importFrom stats AIC coef fitted formula window tsdiag
+#' @importFrom stats AIC coef fitted formula window tsdiag residuals
+#' @importFrom utils setTxtProgressBar txtProgressBar
 NULL
