@@ -884,7 +884,7 @@ print.carx <- function(x,...)
 		print(x$CI)
 		cat("\nVariance-covariance matrix:\n")
 		print(x$vcov)
-    cat(paste0("N.B.: Confidence intervals and variance-covariance matrix are based on ", x$b, " bootstrap samples.\n"))
+    cat(paste0("N.B.: Confidence intervals and variance-covariance matrix\n are based on ", x$b, " bootstrap samples.\n"))
 	}
 }
 
