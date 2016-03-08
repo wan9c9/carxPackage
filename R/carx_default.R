@@ -916,8 +916,7 @@ summary.carx <- function(object,...)
 		se <- sqrt(diag(object$vcov))
 		tVal <- c(coef(object),object$sigma)/se
 
-		est <- coef(object)
-		tab <- cbind(Estimate = est,
+		tab <- cbind(Estimate = object$prmtrEstd,
 			     StdErr =  se[1:(object$npar)],
 			     lowerCI = object$CI[1:(object$npar),1],
 			     upperCI = object$CI[1:(object$npar),2],
