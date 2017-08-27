@@ -146,7 +146,7 @@ tsdiag.carx <- function(object
                         ,col="red"
                         ,omit.initial=TRUE
                         ,mfrow=c(4,1)
-                        ,main="Diagnostic Plots"
+                        ,main="Diagnostic Plots from Simulated Residuals"
                         #,plotRes=TRUE
                         #,plotResVSFit=TRUE
                         #,plotACF=TRUE
