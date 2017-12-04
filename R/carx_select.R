@@ -23,11 +23,8 @@
 #' Examples include \code{CI.compute=TRUE}, which will cause the function to re-estimate the selected model with the confidence 
 #' intervals computed, as in the selection part, no confidence interval is  computed.
 #' @export
-#' @return a list consisting of:
-#' \itemize{
-#' \item{\code{fitted}}{ the fitted CARX object of the model with the smallest AIC.}
-#' \item{\code{aicMat}}{ the matrix of AIC where rows correspond to the model formulas and columns correspond to the AR orders.}
-#' }
+#' @return a \code{carx} object with an additional element \code{selectionInfo} which is a list consisting of the information about the selection, in particular, 
+#' \code{aicMat}, the matrix of AIC where rows correspond to the model formulas and columns correspond to the AR orders.
 #' @examples
 #' dataSim <- carxSimCenTS(nObs=100)
 #' fmls <- list(M1=y~X1,M2=y~X1+X2,M3=y~X1+X2-1)
@@ -39,9 +36,10 @@
 #' }
 #'
 carxSelect <- function(formulas, max.ar, data=list(), detect.outlier=F
-                       #,verbose=FALSE
+                       #,verbose=FALSE,
                        ,...)
 {
+  verbose=FALSE
   dotsArgs = list(...)
   if(typeof(formulas) == 'language')
     formulas <- list(M1=formulas)
@@ -56,9 +54,12 @@ carxSelect <- function(formulas, max.ar, data=list(), detect.outlier=F
   m0 <- NULL
 
   i  <- 0
+  #detailedList = list()
   for(f in formulas)
   {
     i <- i + 1
+    rslt = list()
+    
     for( p in 1:max.ar)
     {
       #message(paste("Trying model fomula:",deparse(f), ", with AR order", p))
@@ -69,7 +70,7 @@ carxSelect <- function(formulas, max.ar, data=list(), detect.outlier=F
       if(detect.outlier)
         tmp <- outlier(tmp)
       a <- AIC(tmp)
-      #if(verbose) message(paste0("Model formula:", deparse(formula(tmp)), ", AR order:",tmp$p, ", AIC: ", round(a,digits=4)))
+      if(verbose) message(paste0("Model formula:", deparse(formula(tmp)), ", AR order:",tmp$p, ", AIC: ", round(a,digits=4)),"\n")
       aics[i,p] <- a
       if(is.null(saic0))
       {
@@ -84,7 +85,9 @@ carxSelect <- function(formulas, max.ar, data=list(), detect.outlier=F
           m0 <- tmp
         }
       }
+      rslt[[p]] = tmp
     }
+    #detailedList[[i]] = rslt
   }
   if(length(dotsArgs)>0)
   {
@@ -94,5 +97,8 @@ carxSelect <- function(formulas, max.ar, data=list(), detect.outlier=F
     m1$outlier.prefix <- m0$outlier.prefix
     m0 <- m1
   }
-  list(fitted = m0, aicMat = aics)
+  m0$selectionInfo = list(formula=formulas,max.ar=max.ar,detect.outlier=detect.outlier,
+                      aicMat=aics)
+  invisible(m0)
+  #list(fitted = m0, aicMat = aics,detailedList=detailedList)
 }

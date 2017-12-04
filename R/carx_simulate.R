@@ -1,9 +1,8 @@
 #' Simulate  data from a \code{carx} model
 #'
 #' Use the provided parameters in the supplied \code{carx} model and other settings to 
-#' simulate data from the \code{carx} model; see  Wang and Chan (2015). 
-
-#' @references Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model 
+#' simulate data from the \code{carx} model; see  Wang and Chan (2017). 
+#' @references Wang C, Chan KS (2017). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables."  Journal of the American Statistical Association. 2017 Mar 20(just-accepted).
 #' with exogenous variables." Submitted.
 #'
 #' @seealso \code{\link{carx}} for model specification. 
@@ -20,12 +19,13 @@
 #' @param inno.dist innovation distribution, can be "normal" or "t", default="normal". If it is "t", 
 #'  its degree of freedom should be supplied in \code{t.df}.
 #' @param t.df the degree of freedom of the t distribution, used only if \code{inno.dist}="t". Default=5.
+#' @param intercept the intercept in the regression. Default=0.
 #' @return a data frame of simulated \code{y}, \code{x}, \code{ci}, \code{lcl} and \code{ucl}.
 #' @export
 #' @examples
 #' dat = carxSim()
 
-carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigma=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL,inno.dist=c("normal","t"),t.df=5)
+carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigma=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL,inno.dist=c("normal","t"),t.df=5,intercept=0)
 {
   if(is.null(lcl)) lcl = -Inf
   if(is.null(ucl)) ucl = Inf
@@ -58,7 +58,7 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigma=0.
   if(is.null(colnames(x)))
     colnames(x) <- paste0("X",seq(1,nX))
 
-	trend <- x%*%prmtrX
+	trend <-  intercept + x%*%prmtrX
 
 	eta <- numeric(nObs)
 	y <- numeric(nObs)
@@ -122,13 +122,13 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigma=0.
 #' @export
 #' @examples
 #' cts = carxSimCenTS()
-carxSimCenTS <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigma=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL, value.name = 'y', end.date=Sys.Date(),inno.dist=c("normal","t"),t.df=5)
+carxSimCenTS <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigma=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL, value.name = 'y', end.date=Sys.Date(),inno.dist=c("normal","t"),t.df=5,intercept=0)
 {
-    ret <- carxSim(nObs,prmtrAR, prmtrX, sigma, lcl, ucl, x, seed)
+    ret <- carxSim(nObs,prmtrAR, prmtrX, sigma, lcl, ucl, x, seed,inno.dist,t.df,intercept)
   #ret is a data.frame
   names(ret) <- c("value",names(ret)[-1])
   ret <- as.list(ret)
-  ret$order.by <- end.date+seq(-nObs,-1,by=1)
+  ret$order.by <- end.date+seq(-nObs+1,0,by=1)
   #listx$value <- ret$y
   ret$value.name <- value.name
 

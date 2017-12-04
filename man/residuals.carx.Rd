@@ -24,15 +24,15 @@ the simulated residuals.
 \description{
 Computes the residuals of fitted \code{carx} object.
 When no censoring is present, the ordinary residuals will be computed.
-Otherwise, the simulated residuals (Gourieroux, Monfort, Renault, and Trognon 1987) of a 
-fitted \code{carx} object will be computed, as suggested in Wang and Chan (2015).
+Otherwise, the simulated residuals (Gourieroux, Monfort, Renault, and Trognon 1987) of a
+fitted \code{carx} object will be computed, as suggested in Wang and Chan (2017).
 }
 \details{
 The simulated residuals are constructed as follows.
- First, impute each unobserved  \eqn{Y_t^*} by a (random) realization from the conditional distribution 
- \eqn{D(Y_t^*|\{(Y_s,X_s)\}_{s=1}^t)}, evaluated at the parameter estimate.
- Then, refit the model with \eqn{(Y_t^* , X_t)} so obtained, via the method of conditional maximum likelihood; 
- the residuals from the latter model are the simulated residuals \eqn{\varepsilon_t}.
+First, impute each unobserved  \eqn{Y_t^*} by a (random) realization from the conditional distribution
+\eqn{D(Y_t^*|\{(Y_s,X_s)\}_{s=1}^t)}, evaluated at the parameter estimate.
+Then, refit the model with \eqn{(Y_t^* , X_t)} so obtained, via the method of conditional maximum likelihood;
+the residuals from the latter model are the simulated residuals \eqn{\varepsilon_t}.
 }
 \examples{
 dat = carxSim(nObs=100,seed=0)
@@ -43,9 +43,8 @@ res = residuals(mdl,type="raw")
 res = residuals(mdl,type="pearson")
 }
 \references{
-Gourieroux C, Monfort A, Renault E, Trognon A (1987). "Simulated residuals." 
+Gourieroux C, Monfort A, Renault E, Trognon A (1987). "Simulated residuals."
 Journal of Econometrics, 34(1), 201-252.
 
-Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables." Submitted.
+Wang C, Chan KS (2017). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables."  Journal of the American Statistical Association. 2017 Mar 20(just-accepted).
 }
-

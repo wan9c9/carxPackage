@@ -34,11 +34,11 @@ a \code{cenTS} object, any censored observation will be replaced by its correspo
 }
 \description{
 Create a censored time series response object of \code{cenTS} class. Default name of the response is "value",
- with the vectors of lower/upper censoring limits denoted by \code{lcl} and \code{ucl} respectively.
- The vector of censoring indicators, i.e., \code{ci}, is part of the \code{cenTS} object.
- Additional related variables can be stored and provided in the construction function, whose names
- are stored in \code{xreg}. All variable values are assumed to be of the same length of and thus
- aligned with the censored response time series. \code{cenTS} inherits from \link[xts]{xts}.
+with the vectors of lower/upper censoring limits denoted by \code{lcl} and \code{ucl} respectively.
+The vector of censoring indicators, i.e., \code{ci}, is part of the \code{cenTS} object.
+Additional related variables can be stored and provided in the construction function, whose names
+are stored in \code{xreg}. All variable values are assumed to be of the same length of and thus
+aligned with the censored response time series. \code{cenTS} inherits from \link[xts:xts]{xts::xts}.
 }
 \examples{
 strDates <- c("2000-01-01", "2000-01-02", "2000-01-03", "2000-01-04", "2000-01-05")
@@ -79,4 +79,3 @@ ts <- cenTS(value=c(1,-2,1,NA,0),
 }
 
 }
-

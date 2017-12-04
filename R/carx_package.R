@@ -29,14 +29,15 @@
 #' where \eqn{(X_t)} is a covariate process with all values observable,
 #' and the innovations \eqn{(\varepsilon_t)} are independent and identically normally distributed with mean 0 and variance \eqn{\sigma^2}.
 #'
-#' In this package we implemented the quasi-maximum likelihood estimator proposed by Wang and Chan (2015), for more details, please refer to the paper.
+#' In this package we implemented the quasi-maximum likelihood estimator proposed by Wang and Chan (2017), for more details, please refer to the paper.
 #'
 #'
 #'
-#' @references Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables." Submitted.
+#' @references Wang C, Chan KS (2017). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables."  Journal of the American Statistical Association. 2017 Mar 20(just-accepted).
 #'
 #' @docType package
 #' @name carx
 #' @importFrom stats AIC coef fitted formula window tsdiag residuals
 #' @importFrom utils setTxtProgressBar txtProgressBar
 NULL
+

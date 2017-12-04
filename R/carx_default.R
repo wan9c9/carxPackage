@@ -8,7 +8,7 @@ carx <- function(y,...) UseMethod("carx")
 #' Estimate a CARX model, and compute the standard errors and confidence intervals of the parameter 
 #' estimates by parametric bootstrap.
 #' 
-#' @param y a vector of possibly censored responses. 
+#' @param y a vector of possibly censored responses.  
 #' @param x a matrix of covariates, or some object which can be coerced to matrix. Default=\code{NULL}, 
 #'  indicating a pure AR model for \code{y}.
 #' @param ci a vector of numeric values. If its i-th value is zero (negative, positive), then the 
@@ -19,7 +19,7 @@ carx <- function(y,...) UseMethod("carx")
 #'  Default = \code{NULL}, indicating no lower censoring limit.
 #' @param ucl a vector of upper censoring limits, or a number assuming constant limit.
 #'  Default = \code{NULL}, indicating no upper censoring limit.
-#' @param p the AR order  for the regression errors. Default = 1.
+#' @param p the AR order for the regression errors. Default = 1.
 #' @param prmtrX the initial values of the regression parameters for \code{x}.
 #'  Default = \code{NULL}.
 #' @param prmtrAR the initial values of the AR coefficients.
@@ -27,7 +27,7 @@ carx <- function(y,...) UseMethod("carx")
 #' @param sigma the initial value of the innovation (noise) standard deviation.
 #'  Default = \code{NULL}.
 #' @param y.na.action a string indicating how to deal with missing (NA) values in \code{y}. 
-#'  If it is set to "skip", cases containing a missing value will be skipped, so that the 
+#'  If it is set to "skip" (default), cases containing a missing value will be skipped, so that the 
 #'  estimating equation of future cases will be conditional on 
 #'  the most recent \code{p} complete cases after the skipped case. 
 #'  If "as.censored", the \code{y} value will be 
@@ -63,24 +63,34 @@ carx <- function(y,...) UseMethod("carx")
 #'  when \code{carx.formula} is invoked. Default = \code{NULL}.
 #' @param verbose logical value indicates whether to print intermediate results for monitoring the 
 #'  the progress of the iterative estimation procedure. Default = FALSE.
+#' @param seed the random seed initialized at the beginning of the function. If a valid seed is supplied, the function will first store the current seed and set the seed according to the supplied seed, then restore the seed upon exit. Default = \code{NULL}.
 #' @param ... not used.
 #' @return a CARX object of the estimated model.
 #' @export
+#' @md
 #' @examples
 #' dat = carxSim(nObs=100,seed=0)
 #' mdl <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, p=2)
 #' #or simply call
 #' mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
 
+#' @seealso \code{\link{cenTS}} on how to construct a \code{cenTS} object.
 carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
        p=1,prmtrX=NULL,prmtrAR=NULL,sigma=NULL,
        y.na.action=c("skip","as.censored"),
        addMu=TRUE,
 			 tol=1e-4,max.iter=500,CI.compute=FALSE,CI.level=0.95,b=1000,b.robust=FALSE,b.show.progress=FALSE,
        init.method = c("biased","consistent"),
-			 cenTS=NULL,verbose=FALSE,...)
+			 cenTS=NULL,verbose=FALSE,
+       seed=NULL,...)
 {
-  #message("Enter carx.default.")
+  oldSeed = NULL
+  if(!is.null(seed) & exists(".Random.seed"))
+  {
+    oldSeed = .Random.seed
+    set.seed(seed)
+  }
+  
 	verbose <- verbose || options()$verbose
 	nObs <- length(y)
   
@@ -93,7 +103,7 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 
   finiteY <- which(is.finite(y))
 
-	#standardize censoreIndicator
+	#standardize censorIndicator
   if(is.null(ci))
     ci <- rep(0,length(y))
 	ci[finiteY][ ci[finiteY]>0 ] <- 1; ci[finiteY][ ci[finiteY]<0 ] <- -1
@@ -732,34 +742,46 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 	}
 	class(ret) <- "carx"
   #message("Exit carx.default.")
+  if(!is.null(seed) & !is.null(oldSeed))
+  {
+    .Random.seed <- oldSeed
+  }
 	invisible(ret)
 }
 
+
+
 #' A formula interface to the \code{carx} method
 #'
-#' This interface will use the supplied \code{formula} and data provided by \code{data} and other arguments 
+#' This interface  uses the supplied \code{formula} and data provided by \code{data} and other arguments 
 #' in \code{...} to invoke the \code{carx.default} method. This is the preferred way of calling the 
-#' \code{carx.default} function. The data and censoring information are best passed to the function via
-#' a \code{cenTS} object comprising 
-#' \code{y}, \code{x}, \code{ci}, \code{lcl}, and \code{ucl}.
-#'
-#'
-#' @seealso \code{\link{cenTS}} on how to construct a \code{cenTS} object.
-#' @param formula the formula.
-#' @param data the data consisting of the \code{y}, \code{x}, \code{lcl},\code{ci}, and \code{ucl} objects;
-#'  can be a \code{list}, \code{data.frame}, or a \code{\link{cenTS}} object.
-#' @param ... other arguments supplied to \code{\link{carx.default}}.
+#' \code{\link{carx.default}} function.
+#' 
+#' @param formula a formula representing the regression part of the model, such as `y ~ x1 + x2`.
+#' @param data  a \code{list}, \code{data.frame}, or a \code{\link{cenTS}} object which includes the following:
+#'  * the response variable with variable name identified by the supplied formula.
+#'  * any covariate(s) with with variable name(s) identified by the supplied formula.
+#'  * \code{ci} whose components take values from {-1, 0,  1}, where -1 (0,1) indicates that the corresponding element in the response variable is left-censored (not censored,  right censored). 
+#'  * \code{lcl} which denotes the vector of left (lower) censoring limits. %, or a numeric value representing a constant left (lower)  censoring limit. If not present, indicating no lower limit. 
+#'  * \code{ucl} which denotes the vector of right (upper)  censoring limits. %, or a numeric value representing a constant limit. If not present, indicating no upper limit.
+#' @param ... other parameters accepted by \code{\link{carx.default}} except \code{y}, \code{x}, \code{ci}, \code{lcl}, and \code{ucl}.
+#' @return a CARX object of the estimated model.
 #' @export
+#' @md
 #' @examples
 #' dat = carxSim(nObs=100,seed=0)
+# mdl <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, p=2)
+# or simply call
 #' mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
+
+#' @seealso \code{\link{carx.default}} for more options.
+#' @seealso \code{\link{cenTS}} on how to construct a \code{cenTS} object.
 
 carx.formula <- function(formula, data=list(),...)
 {
-  #message("Enter carx.formula")
   vars <- list(...)
   nvars <- names(vars)
-
+  
   if('cenTS' %in% class(data))
   {
     data2 <- data.frame(zoo::coredata(data))
@@ -767,30 +789,30 @@ carx.formula <- function(formula, data=list(),...)
   }
   else
     data2 <- data
-
-	mf <- stats::model.frame(formula=formula,data=data2,na.action=NULL)
-	y <- stats::model.response(mf)
-	x <- stats::model.matrix(attr(mf,"terms"),data=mf)
-
+  
+  mf <- stats::model.frame(formula=formula,data=data2,na.action=NULL)
+  y <- stats::model.response(mf)
+  x <- stats::model.matrix(attr(mf,"terms"),data=mf)
+  
   if( "lcl" %in% names(data2) )
     vars$lcl <- data2$lcl
-
+  
   if( "ucl" %in% names(data2) )
     vars$ucl <- data2$ucl
-
+  
   if( "ci" %in% names(data2) )
     vars$ci <- data2$ci
 
   toPass <- c(list(y=y,x=x),vars)
-	#est <- carx.default(y,x,...)
   est <- do.call(carx.default,toPass)
-	est$call <- match.call()
-  #print(est$call)
-	est$formula <- formula
+  est$call <- match.call()
+  est$formula <- formula
   est$data <- data
-  #message("Exit carx.formula")
-	est
+  invisible(est)
 }
+
+
+
 
 #' The quasi-log-likelihood of a \code{carx} object
 #' @param object a fitted \code{carx} object.

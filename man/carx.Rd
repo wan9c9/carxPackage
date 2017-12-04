@@ -11,7 +11,7 @@ covariates (CARX), which can also be viewed as regression models with
 censored responses
 and autoregressive residuals. \code{carx} allows left, right, or interval
 censoring for the response variable. The regression errors are assumed to
-follow an autoregressive model with normal innovations. 
+follow an autoregressive model with normal innovations.
 In addition to the estimation method, the package also
 contains functions to predict future values, diagnose whether the model is
 adequate, and plot functions to illustrate the data and model.
@@ -36,9 +36,8 @@ and
 where \eqn{(X_t)} is a covariate process with all values observable,
 and the innovations \eqn{(\varepsilon_t)} are independent and identically normally distributed with mean 0 and variance \eqn{\sigma^2}.
 
-In this package we implemented the quasi-maximum likelihood estimator proposed by Wang and Chan (2015), for more details, please refer to the paper.
+In this package we implemented the quasi-maximum likelihood estimator proposed by Wang and Chan (2017), for more details, please refer to the paper.
 }
 \references{
-Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables." Submitted.
+Wang C, Chan KS (2017). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables."  Journal of the American Statistical Association. 2017 Mar 20(just-accepted).
 }
-

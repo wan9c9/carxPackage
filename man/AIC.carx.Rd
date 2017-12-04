@@ -14,10 +14,10 @@
 \item{k}{penalty multiplier for the number of parameters. Default = 2.}
 }
 \value{
-the AIC value = -2*maximum quasi-log-likelihood+k*number of parameters
+the AIC value = -2\emph{maximum quasi-log-likelihood+k}number of parameters
 }
 \description{
-Return the AIC of a fitted \code{carx} object where the maximum log-likelihood is replaced by the 
+Return the AIC of a fitted \code{carx} object where the maximum log-likelihood is replaced by the
 maximum quasi-log-likelihood.
 }
 \examples{
@@ -25,4 +25,3 @@ dat = carxSim(nObs=100,seed=0)
 mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
 ic = AIC(mdl)
 }
-

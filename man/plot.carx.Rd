@@ -10,9 +10,9 @@
 \arguments{
 \item{x}{a fitted \code{carx} object.}
 
-\item{FUN}{an optional function to be applied to the transform the responses before plotting. 
+\item{FUN}{an optional function to be applied to the transform the responses before plotting.
 This is useful for plotting the data on the original scale if the fitted \code{carx} object is based on
-transformed responses. For instance, if the \code{carx} object was fitted with log transformed responses, 
+transformed responses. For instance, if the \code{carx} object was fitted with log transformed responses,
 setting \code{FUN} to exp renders the original response data to be plotted. Default = \code{NULL}.}
 
 \item{xAxisVar}{an optional vector to be plotted as the x variable. Default =
@@ -33,8 +33,8 @@ None. A plot will be displayed.
 \details{
 The y axis will be the values related to the response.
 If the fitted object contains the data and censored  information in a \code{cenTS} object,
- the function will take advantage of the plot function for a \code{cenTS} object and superimpose the plot of the fitted values.
- Otherwise, the plot function will try to produce a plot similar to the previous case, while the x axis can be supplied by the user through \code{xAxisVar}, which must be ordinal and increasing.
+the function will take advantage of the plot function for a \code{cenTS} object and superimpose the plot of the fitted values.
+Otherwise, the plot function will try to produce a plot similar to the previous case, while the x axis can be supplied by the user through \code{xAxisVar}, which must be ordinal and increasing.
 }
 \examples{
 
@@ -51,4 +51,3 @@ mdl <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, 
 mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
 plot(mdl)
 }
-

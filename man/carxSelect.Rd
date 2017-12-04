@@ -13,33 +13,30 @@ carxSelect(formulas, max.ar, data = list(), detect.outlier = F, ...)
 
 \item{data}{a \code{CenTS} object containing the data and censored information.}
 
-\item{detect.outlier}{logical to specify whether outlier detection is performed (and incorporating in 
+\item{detect.outlier}{logical to specify whether outlier detection is performed (and incorporating in
 the \code{carx} model any found additive outliers) before computing the AIC for a model. Default = \code{FALSE}.}
 
-\item{...}{other arguments to be supplied, if not null, it will be called with the selected model and data. 
-Examples include \code{CI.compute=TRUE}, which will cause the function to re-estimate the selected model with the confidence 
+\item{...}{other arguments to be supplied, if not null, it will be called with the selected model and data.
+Examples include \code{CI.compute=TRUE}, which will cause the function to re-estimate the selected model with the confidence
 intervals computed, as in the selection part, no confidence interval is  computed.}
 }
 \value{
-a list consisting of:
-\itemize{
-\item{\code{fitted}}{ the fitted CARX object of the model with the smallest AIC.}
-\item{\code{aicMat}}{ the matrix of AIC where rows correspond to the model formulas and columns correspond to the AR orders.}
-}
+a \code{carx} object with an additional element \code{selectionInfo} which is a list consisting of the information about the selection, in particular,
+\code{aicMat}, the matrix of AIC where rows correspond to the model formulas and columns correspond to the AR orders.
 }
 \description{
 This function selects the \code{carx} model which minimizes the AIC among a set of \code{carx} models
- defined by a set of  formulas or a list of regression formulas with a maximal AR order.
+defined by a set of  formulas or a list of regression formulas with a maximal AR order.
 The model specification is supplied by \code{formulas} which can be either a formula or a list of formulas.
 For each formula, the function will estimate the \code{carx} models with the AR order
- from 1 to \code{max.ar} inclusive.
-If \code{detect.outlier=TRUE}, outlier detection will be performed for each combination of model 
+from 1 to \code{max.ar} inclusive.
+If \code{detect.outlier=TRUE}, outlier detection will be performed for each combination of model
 formula and AR order.
 The function returns a \code{list} which consists of: 1)  \code{aicMat} which is a matrix of AIC
-values where 
-each row contains the AICs of the model given by a specific regression formula with the AR order 
-ranging from 1 to \code{mar.ar} 
-(after incorporation of any found outlier if outlier detection if enabled), and 
+values where
+each row contains the AICs of the model given by a specific regression formula with the AR order
+ranging from 1 to \code{mar.ar}
+(after incorporation of any found outlier if outlier detection if enabled), and
 2) \code{fitted} which is the fitted object of the selected model.
 }
 \examples{
@@ -53,4 +50,3 @@ fmls <- list(M1=y~X1,M2=y~X1+X2,M3=y~X1+X2-1)
 }
 
 }
-

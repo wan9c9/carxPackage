@@ -9,26 +9,26 @@
   y.na.action = c("skip", "as.censored"), addMu = TRUE, tol = 1e-04,
   max.iter = 500, CI.compute = FALSE, CI.level = 0.95, b = 1000,
   b.robust = FALSE, b.show.progress = FALSE, init.method = c("biased",
-  "consistent"), cenTS = NULL, verbose = FALSE, ...)
+  "consistent"), cenTS = NULL, verbose = FALSE, seed = NULL, ...)
 }
 \arguments{
 \item{y}{a vector of possibly censored responses.}
 
-\item{x}{a matrix of covariates, or some object which can be coerced to matrix. Default=\code{NULL}, 
+\item{x}{a matrix of covariates, or some object which can be coerced to matrix. Default=\code{NULL},
 indicating a pure AR model for \code{y}.}
 
-\item{ci}{a vector of numeric values. If its i-th value is zero (negative, positive), then the 
- corresponding element of 
-\code{y} is uncensored (left, right censored). 
- Default = \code{NULL}, indicating no censoring.}
+\item{ci}{a vector of numeric values. If its i-th value is zero (negative, positive), then the
+corresponding element of
+\code{y} is uncensored (left, right censored).
+Default = \code{NULL}, indicating no censoring.}
 
-\item{lcl}{a vector of lower censoring limits, or a number assuming constant limit. 
+\item{lcl}{a vector of lower censoring limits, or a number assuming constant limit.
 Default = \code{NULL}, indicating no lower censoring limit.}
 
 \item{ucl}{a vector of upper censoring limits, or a number assuming constant limit.
 Default = \code{NULL}, indicating no upper censoring limit.}
 
-\item{p}{the AR order  for the regression errors. Default = 1.}
+\item{p}{the AR order for the regression errors. Default = 1.}
 
 \item{prmtrX}{the initial values of the regression parameters for \code{x}.
 Default = \code{NULL}.}
@@ -39,18 +39,18 @@ Default = \code{NULL}.}
 \item{sigma}{the initial value of the innovation (noise) standard deviation.
 Default = \code{NULL}.}
 
-\item{y.na.action}{a string indicating how to deal with missing (NA) values in \code{y}. 
-If it is set to "skip", cases containing a missing value will be skipped, so that the 
-estimating equation of future cases will be conditional on 
-the most recent \code{p} complete cases after the skipped case. 
-If "as.censored", the \code{y} value will be 
-treated as left-censored with lower censoring limit replaced by positive infinity. 
+\item{y.na.action}{a string indicating how to deal with missing (NA) values in \code{y}.
+If it is set to "skip" (default), cases containing a missing value will be skipped, so that the
+estimating equation of future cases will be conditional on
+the most recent \code{p} complete cases after the skipped case.
+If "as.censored", the \code{y} value will be
+treated as left-censored with lower censoring limit replaced by positive infinity.
 The user may choose to use "skip" if there exist few long gaps in the time series of
-response. Use "as.censored" if the missing values in \code{y} are many and scattered in time. 
-N.B.: The presence of any missing values in \code{x} will automatically hard-code \code{y.na.action} 
+response. Use "as.censored" if the missing values in \code{y} are many and scattered in time.
+N.B.: The presence of any missing values in \code{x} will automatically hard-code \code{y.na.action}
 to be "skip".}
 
-\item{addMu}{logical, indicating whether to include an intercept in case \code{x=NULL}. 
+\item{addMu}{logical, indicating whether to include an intercept in case \code{x=NULL}.
 Default = \code{TRUE}.}
 
 \item{tol}{the tolerance level used in the stopping criterion. Default = 1.0e-4.}
@@ -65,28 +65,30 @@ parameters. Default = \code{FALSE}, as it can be time-consuming to run the param
 \item{b}{number of bootstrap replicates used for computing the boostrap confidence intervals.
 Default = 1000.}
 
-\item{b.robust}{logical, if \code{TRUE}, the innovations are re-sampled from the simulated residuals; 
+\item{b.robust}{logical, if \code{TRUE}, the innovations are re-sampled from the simulated residuals;
 otherwise they are re-sampled from a centered normal distribution with the estimated standard deviation.
 Default = \code{FALSE}.}
 
 \item{b.show.progress}{logical, if \code{TRUE}, a text bar will be displayed to show the progress of bootstrap when computing the confidence intervals of the parameter estimates.}
 
-\item{init.method}{a string selecting a procedure ("biased", or "consistent") 
-for deteriming the initial values, in case there 
-are no initial values for some parameters, i.e., one of \code{prmtrX}, \code{prmtrAR}, \code{sigma} 
-is \code{NULL}. The "biased" method is always available, 
-as it uses maximum gaussian likelihood estimator with the data replacing any censored observation by its 
-corresponding censoring limit. The "consistent" method is only available for left censored data. 
- Note that the "consistent" method may produce initial estimates with non-stationary AR coefficients 
- or negative innovation variance, in which case, the function will fall back to the "biased" method 
- for constucting the initial values (when this happens, the attribute \code{fallBackToBiased} of the returned object will 
- be set to \code{TRUE}.)  Default="biased".}
+\item{init.method}{a string selecting a procedure ("biased", or "consistent")
+for deteriming the initial values, in case there
+are no initial values for some parameters, i.e., one of \code{prmtrX}, \code{prmtrAR}, \code{sigma}
+is \code{NULL}. The "biased" method is always available,
+as it uses maximum gaussian likelihood estimator with the data replacing any censored observation by its
+corresponding censoring limit. The "consistent" method is only available for left censored data.
+Note that the "consistent" method may produce initial estimates with non-stationary AR coefficients
+or negative innovation variance, in which case, the function will fall back to the "biased" method
+for constucting the initial values (when this happens, the attribute \code{fallBackToBiased} of the returned object will
+be set to \code{TRUE}.)  Default="biased".}
 
-\item{cenTS}{an optional argument to pass a \code{cenTS} object which contain the data used, 
+\item{cenTS}{an optional argument to pass a \code{cenTS} object which contain the data used,
 when \code{carx.formula} is invoked. Default = \code{NULL}.}
 
-\item{verbose}{logical value indicates whether to print intermediate results for monitoring the 
+\item{verbose}{logical value indicates whether to print intermediate results for monitoring the
 the progress of the iterative estimation procedure. Default = FALSE.}
+
+\item{seed}{the random seed initialized at the beginning of the function. If a valid seed is supplied, the function will first store the current seed and set the seed according to the supplied seed, then restore the seed upon exit. Default = \code{NULL}.}
 
 \item{...}{not used.}
 }
@@ -94,7 +96,7 @@ the progress of the iterative estimation procedure. Default = FALSE.}
 a CARX object of the estimated model.
 }
 \description{
-Estimate a CARX model, and compute the standard errors and confidence intervals of the parameter 
+Estimate a CARX model, and compute the standard errors and confidence intervals of the parameter
 estimates by parametric bootstrap.
 }
 \examples{
@@ -103,4 +105,6 @@ mdl <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, 
 #or simply call
 mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
 }
-
+\seealso{
+\code{\link{cenTS}} on how to construct a \code{cenTS} object.
+}

@@ -6,7 +6,7 @@
 \usage{
 carxSim(nObs = 200, prmtrAR = c(-0.28, 0.25), prmtrX = c(0.2, 0.4),
   sigma = 0.6, lcl = -1, ucl = 1, x = NULL, seed = NULL,
-  inno.dist = c("normal", "t"), t.df = 5)
+  inno.dist = c("normal", "t"), t.df = 5, intercept = 0)
 }
 \arguments{
 \item{nObs}{number of observations to be simulated.}
@@ -21,31 +21,32 @@ carxSim(nObs = 200, prmtrAR = c(-0.28, 0.25), prmtrX = c(0.2, 0.4),
 
 \item{ucl}{the upper censoring limit.}
 
-\item{x}{optional matrix for X. Default = \code{NULL}, in which case X will be simulated from 
+\item{x}{optional matrix for X. Default = \code{NULL}, in which case X will be simulated from
 the standard normal distribution with dimensions determined by \code{nObs} and \code{prmtrX}.}
 
 \item{seed}{optional to set the seed of random number generator used by \code{R}, default=\code{NULL}.}
 
-\item{inno.dist}{innovation distribution, can be "normal" or "t", default="normal". If it is "t", 
+\item{inno.dist}{innovation distribution, can be "normal" or "t", default="normal". If it is "t",
 its degree of freedom should be supplied in \code{t.df}.}
 
 \item{t.df}{the degree of freedom of the t distribution, used only if \code{inno.dist}="t". Default=5.}
+
+\item{intercept}{the intercept in the regression. Default=0.}
 }
 \value{
 a data frame of simulated \code{y}, \code{x}, \code{ci}, \code{lcl} and \code{ucl}.
 }
 \description{
-Use the provided parameters in the supplied \code{carx} model and other settings to 
-simulate data from the \code{carx} model; see  Wang and Chan (2015).
+Use the provided parameters in the supplied \code{carx} model and other settings to
+simulate data from the \code{carx} model; see  Wang and Chan (2017).
 }
 \examples{
 dat = carxSim()
 }
 \references{
-Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model 
+Wang C, Chan KS (2017). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables."  Journal of the American Statistical Association. 2017 Mar 20(just-accepted).
 with exogenous variables." Submitted.
 }
 \seealso{
 \code{\link{carx}} for model specification.
 }
-

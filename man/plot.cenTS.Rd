@@ -30,4 +30,3 @@ ts <- cenTS(value=c(1,-2,1,NA,0),
 \seealso{
 \code{\link[xts]{plot.xts}}.
 }
-

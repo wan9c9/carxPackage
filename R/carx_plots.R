@@ -36,6 +36,7 @@
 #' plot(mdl)
 plot.carx <- function(x,FUN=identity, xAxisVar=NULL, xlab="Index", ylab="Response",...)
 {
+  #plot.new()
 	object <- x
   finiteRows <- object$finiteRows
   cts <- object$cenTS
@@ -154,7 +155,7 @@ tsdiag.carx <- function(object
                         ,...)
 {
   #nPlot <- sum(plotRes + plotResVSFit + plotACF + plotLB)
-
+  #plot.new()
   opar = graphics::par(mfrow = mfrow, mar = c(4, 4, 4, 3) + 0.1, oma = c(1, 0, 2, 0))
   n = object$nObs
   cts = object$cenTS
@@ -175,15 +176,21 @@ tsdiag.carx <- function(object
 
   std.res = residuals/object$sigma
   n = length(std.res)
-  h1 = stats::qnorm(0.025/n)
+  #h1 = stats::qnorm(0.025/n)
+  #resMax = max(max(std.res,na.rm=TRUE),h1)
+  #resMin = min(min(std.res,na.rm=TRUE),-h1)
   if(is.null(cts))
-    graphics::plot(std.res, ylab = "Standardized Residuals", type = "p",main=main, ...)
-  else
-    graphics::plot(xts::xts(std.res,zoo::index(cts)),ylab = "Standardized Residuals", type = "p", main=main,...)
-  graphics::abline(h = h1, lty = 2, col = col)
-  graphics::abline(h = -h1, lty = 2, col = col)
-  graphics::abline(h = 0)
-
+    graphics::plot(std.res, ylab = "Standardized Residuals", type = "p",main="", ...)
+  else{
+    zoo::plot.zoo(xts::xts(std.res,zoo::index(cts)),#major.ticks="months",minor.ticks="daily",
+                        ylab = "Standardized Residuals", type = "p",#ylim=1.2*range(std.res,na.rm=TRUE), 
+                  main="",...)
+  }
+  #graphics::plot(xts::xts(std.res,zoo::index(cts)),ylab = "Standardized Residuals", type = "p", main=main,...)
+  #graphics::abline(h = h1, lty = 2, col = col)
+  #graphics::abline(h = -h1, lty = 2, col = col)
+  #graphics::abline(h = 0)
+  graphics::par(xpd=FALSE)
 
   graphics::plot(f,std.res,xlab="Fitted",ylab="Standardized Residuals")
 
@@ -197,6 +204,7 @@ tsdiag.carx <- function(object
   graphics::plot(y = lbv, x = 1:lag.max, ylim = c(0, 1), pch = 21, ylab = "P-values",
       xlab = "Number of lags", ...)
   graphics::abline(h = 0.05, lty = 2, col = col)
+  graphics::mtext(main,outer=TRUE,cex=1)
   graphics::par(opar)
   invisible()
 }

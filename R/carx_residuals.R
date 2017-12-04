@@ -3,7 +3,7 @@
 #' Computes the residuals of fitted \code{carx} object.
 #' When no censoring is present, the ordinary residuals will be computed.
 #' Otherwise, the simulated residuals (Gourieroux, Monfort, Renault, and Trognon 1987) of a 
-#' fitted \code{carx} object will be computed, as suggested in Wang and Chan (2015).
+#' fitted \code{carx} object will be computed, as suggested in Wang and Chan (2017).
 #' 
 #'  The simulated residuals are constructed as follows.
 #'  First, impute each unobserved  \eqn{Y_t^*} by a (random) realization from the conditional distribution 
@@ -13,7 +13,7 @@
 #' @references Gourieroux C, Monfort A, Renault E, Trognon A (1987). "Simulated residuals." 
 #' Journal of Econometrics, 34(1), 201-252.
 #'
-#' Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables." Submitted.
+#' Wang C, Chan KS (2017). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables."  Journal of the American Statistical Association. 2017 Mar 20(just-accepted).
 #' @param object a fitted \code{carx} object.
 #' @param type a string indicates which type of residual is to be returned.
 #' "raw" returns the (simulated) residuals;

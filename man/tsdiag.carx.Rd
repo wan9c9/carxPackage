@@ -5,7 +5,7 @@
 \title{Show diagnostic plots for a \code{carx} object}
 \usage{
 \method{tsdiag}{carx}(object, gof.lag, col = "red", omit.initial = TRUE,
-  mfrow = c(4, 1), main = "Diagnostic Plots", ...)
+  mfrow = c(4, 1), main = "Diagnostic Plots from Simulated Residuals", ...)
 }
 \arguments{
 \item{object}{a \code{carx} object.}
@@ -39,4 +39,3 @@ dat = carxSim(nObs=100,seed=0)
 mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
 tsdiag(mdl)
 }
-

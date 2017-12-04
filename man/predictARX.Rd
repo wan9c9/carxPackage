@@ -29,4 +29,3 @@ Otherwise, a matrix of new observations is required to compute predictions. Defa
 Predict a regression model with AR errors
 }
 \keyword{internal}
-

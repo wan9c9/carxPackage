@@ -4,7 +4,7 @@
 \alias{outlier.carx}
 \title{Detect all outliers of a \code{carx} object}
 \usage{
-\method{outlier}{carx}(object, outlier.prefix = "OI_", seed = NULL)
+\method{outlier}{carx}(object, outlier.prefix = "OI_", seed = 131)
 }
 \arguments{
 \item{object}{a \code{carx} object.}
@@ -18,7 +18,7 @@ an updated \code{carx} object. If any outlier is detected, its index will be sto
 }
 \description{
 Detect all outliers of a \code{carx} object and update the model if any outlier is detected.
-It tests for the presence of outliers one at a time, for each time point, adjusted for multiplicity of testing, as described in Wang and Chan (2015).
+It tests for the presence of outliers one at a time, for each time point, adjusted for multiplicity of testing, as described in Wang and Chan (2017).
 }
 \examples{
 sigma = 0.6
@@ -33,6 +33,5 @@ print(oc)
 print(formula(oc))
 }
 \references{
-Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables." Submitted.
+Wang C, Chan KS (2017). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables."  Journal of the American Statistical Association. 2017 Mar 20(just-accepted).
 }
-

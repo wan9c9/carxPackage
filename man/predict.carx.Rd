@@ -33,7 +33,7 @@ A list consisting of \code{fit}, \code{se.fit}, and \code{ci} representing the p
 standard errors of predictions, and confidence intervals respectively.
 }
 \description{
-Predict the future values of an fitted \code{carx} object. If the model has non-null covariate \code{x} other than the constant mean, the new observations in \code{x} must be supplied via \code{newxreg}. The model prediction is done in a similar way as in \code{fitted.carx} by identifying the latest \eqn{p} consecutive observed responses in the data used to estimate model, then compute the mean of the conditional distribution of the future values given the information since the latest p consecutive observed values and the supplied new covariate values. For more details, see Wang and Chan (2015).
+Predict the future values of an fitted \code{carx} object. If the model has non-null covariate \code{x} other than the constant mean, the new observations in \code{x} must be supplied via \code{newxreg}. The model prediction is done in a similar way as in \code{fitted.carx} by identifying the latest \eqn{p} consecutive observed responses in the data used to estimate model, then compute the mean of the conditional distribution of the future values given the information since the latest p consecutive observed values and the supplied new covariate values. For more details, see Wang and Chan (2017).
 }
 \examples{
  #This is the function to run a simulation study about the empirical coverage rate of 
@@ -93,6 +93,5 @@ Predict the future values of an fitted \code{carx} object. If the model has non-
  }
 }
 \references{
-Wang C, Chan KS (2015). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables." Submitted.
+Wang C, Chan KS (2017). "Quasi-likelihood estimation of a censored autoregressive model with exogenous variables." Journal of the American Statistical Association. 2017 Mar 20(just-accepted).
 }
-

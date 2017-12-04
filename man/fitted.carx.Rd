@@ -16,14 +16,14 @@ the fitted values.
 }
 \description{
 Compute the fitted values from a \code{carx} object.
- Note that the existence of censoring invalidates the usual Markov property for an AR model.  
- Instead, the conditional distribution of \eqn{Y^*_t} given the past \eqn{Y}s and current
- and past covariates is the same as the conditional distribution
- \eqn{D_t = D(Y^*_t|X_t, {(Y_{j}, X_j )}_{j=\tau}^{t-1} )},
-where \eqn{1 \le \tau \le t-p} is the largest integer \eqn{t} such that 
-none of \eqn{Y_t;t=\tau+p-1,...,\tau} is censored. In the case that \eqn{\tau = t-p}, 
-the fitted value can be readily computed; otherwise, the fitted value is computed as the 
-mean of the distribution 
+Note that the existence of censoring invalidates the usual Markov property for an AR model.
+Instead, the conditional distribution of \eqn{Y^*_t} given the past \eqn{Y}s and current
+and past covariates is the same as the conditional distribution
+\eqn{D_t = D(Y^*_t|X_t, {(Y_{j}, X_j )}_{j=\tau}^{t-1} )},
+where \eqn{1 \le \tau \le t-p} is the largest integer \eqn{t} such that
+none of \eqn{Y_t;t=\tau+p-1,...,\tau} is censored. In the case that \eqn{\tau = t-p},
+the fitted value can be readily computed; otherwise, the fitted value is computed as the
+mean of the distribution
 \eqn{D_t} by the function \code{mtmvnorm} from the package \pkg{{tmvtnorm}}.
 }
 \examples{
@@ -32,4 +32,3 @@ mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
 #compute the fitted values
 fv = fitted(mdl)
 }
-

@@ -7,7 +7,7 @@
 carxSimCenTS(nObs = 200, prmtrAR = c(-0.28, 0.25), prmtrX = c(0.2, 0.4),
   sigma = 0.6, lcl = -1, ucl = 1, x = NULL, seed = NULL,
   value.name = "y", end.date = Sys.Date(), inno.dist = c("normal", "t"),
-  t.df = 5)
+  t.df = 5, intercept = 0)
 }
 \arguments{
 \item{nObs}{number of observations to be simulated.}
@@ -22,7 +22,7 @@ carxSimCenTS(nObs = 200, prmtrAR = c(-0.28, 0.25), prmtrX = c(0.2, 0.4),
 
 \item{ucl}{the upper censoring limit.}
 
-\item{x}{optional matrix for X. Default = \code{NULL}, in which case X will be simulated from 
+\item{x}{optional matrix for X. Default = \code{NULL}, in which case X will be simulated from
 the standard normal distribution with dimensions determined by \code{nObs} and \code{prmtrX}.}
 
 \item{seed}{optional to set the seed of random number generator used by \code{R}, default=\code{NULL}.}
@@ -31,10 +31,12 @@ the standard normal distribution with dimensions determined by \code{nObs} and \
 
 \item{end.date}{the date of the last observation, default = \code{Sys.date()}.}
 
-\item{inno.dist}{innovation distribution, can be "normal" or "t", default="normal". If it is "t", 
+\item{inno.dist}{innovation distribution, can be "normal" or "t", default="normal". If it is "t",
 its degree of freedom should be supplied in \code{t.df}.}
 
 \item{t.df}{the degree of freedom of the t distribution, used only if \code{inno.dist}="t". Default=5.}
+
+\item{intercept}{the intercept in the regression. Default=0.}
 }
 \value{
 a \code{cenTS} object with regressors.
@@ -48,4 +50,3 @@ cts = carxSimCenTS()
 \seealso{
 \code{\link{carxSim}}.
 }
-

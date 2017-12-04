@@ -5,7 +5,7 @@
 #'  The vector of censoring indicators, i.e., \code{ci}, is part of the \code{cenTS} object.
 #'  Additional related variables can be stored and provided in the construction function, whose names
 #'  are stored in \code{xreg}. All variable values are assumed to be of the same length of and thus
-#'  aligned with the censored response time series. \code{cenTS} inherits from \link[xts]{xts}.
+#'  aligned with the censored response time series. \code{cenTS} inherits from [xts::xts].
 #' @param order.by the index vector, must be a vector of time/date.
 #' @param value the value vector.
 #' @param lcl the vector of lower censoring limits, or a single numeric representing the constant limit.

@@ -25,4 +25,3 @@ This function calculates the conditional mean & variance of a multivariate norma
 with (\code{meanVec}, \code{varMat}), conditional on y at the indices \code{conditionalIndex}.
 }
 \keyword{internal}
-

@@ -7,25 +7,33 @@
 \method{carx}{formula}(formula, data = list(), ...)
 }
 \arguments{
-\item{formula}{the formula.}
+\item{formula}{a formula representing the regression part of the model, such as \code{y ~ x1 + x2}.}
 
-\item{data}{the data consisting of the \code{y}, \code{x}, \code{lcl},\code{ci}, and \code{ucl} objects;
-can be a \code{list}, \code{data.frame}, or a \code{\link{cenTS}} object.}
+\item{data}{a \code{list}, \code{data.frame}, or a \code{\link{cenTS}} object which includes the following:
+\itemize{
+\item the response variable with variable name identified by the supplied formula.
+\item any covariate(s) with with variable name(s) identified by the supplied formula.
+\item \code{ci} whose components take values from {-1, 0,  1}, where -1 (0,1) indicates that the corresponding element in the response variable is left-censored (not censored,  right censored).
+\item \code{lcl} which denotes the vector of left (lower) censoring limits. %, or a numeric value representing a constant left (lower)  censoring limit. If not present, indicating no lower limit.
+\item \code{ucl} which denotes the vector of right (upper)  censoring limits. %, or a numeric value representing a constant limit. If not present, indicating no upper limit.
+}}
 
-\item{...}{other arguments supplied to \code{\link{carx.default}}.}
+\item{...}{other parameters accepted by \code{\link{carx.default}} except \code{y}, \code{x}, \code{ci}, \code{lcl}, and \code{ucl}.}
+}
+\value{
+a CARX object of the estimated model.
 }
 \description{
-This interface will use the supplied \code{formula} and data provided by \code{data} and other arguments 
-in \code{...} to invoke the \code{carx.default} method. This is the preferred way of calling the 
-\code{carx.default} function. The data and censoring information are best passed to the function via
-a \code{cenTS} object comprising 
-\code{y}, \code{x}, \code{ci}, \code{lcl}, and \code{ucl}.
+This interface  uses the supplied \code{formula} and data provided by \code{data} and other arguments
+in \code{...} to invoke the \code{carx.default} method. This is the preferred way of calling the
+\code{\link{carx.default}} function.
 }
 \examples{
 dat = carxSim(nObs=100,seed=0)
 mdl <- carx(y~X1+X2-1,data=dat, p=2, CI.compute = FALSE)
 }
 \seealso{
+\code{\link{carx.default}} for more options.
+
 \code{\link{cenTS}} on how to construct a \code{cenTS} object.
 }
-

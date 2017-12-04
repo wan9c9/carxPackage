@@ -22,4 +22,3 @@ Detect all outliers of a \code{carx} object.
 \seealso{
 \code{\link{outlier.carx}}.
 }
-
