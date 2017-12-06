@@ -1,6 +1,6 @@
 Package: carx
 Title: Censored Autoregressive Model with Exogenous Covariates
-Version: 0.7.1
+Version: 0.7.2
 Authors@R: c(
 	person("Chao", "Wang", role = c("aut", "cre"), email = "chao-wang@uiowa.edu"),
 	person("Kung-Sik", "Chan", role = c("aut"), email = "kung-sik-chan@uiowa.edu"))
