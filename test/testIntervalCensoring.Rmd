@@ -1,0 +1,125 @@
+---
+title: "Test invterval censoring"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/workspace/carxPackage/")
+library(devtools)
+load_all()
+
+nObs=200
+
+#tmp <- seq(1,nObs)
+#tmp <- tmp - mean(tmp)
+#tmp <- tmp/sd(tmp)
+
+#x <- matrix(tmp,ncol=1)
+
+#library(devtools);load_all('~/workspace/carxPackage')
+#  carxSim(nObs = 200, prmtrAR = c(-0.28, 0.25), prmtrX = c(0.2, 0.4),
+#       sigmaEps = 0.6, lcl = -1, ucl = 1, x = NULL, seed = NULL,
+#       inno.dist = c("normal", "t"), t.df = 5)
+#iRep <- 2
+simSingle <- function(iRep)
+{
+  message("iRep: ", iRep)
+  dat <- carxSim(nObs=nObs,lcl=-0.5,ucl=0.5,intervalCensoring=TRUE,seed=37951*iRep)
+mdl <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, p=2)
+
+  #mdl <- carx(y~X1-1,simData,p=2)
+  #debug(testForTrend)
+  #tft <- testForTrend(mdl)
+  c(coef(mdl),mdl$sigma)
+}
+
+simSingle(1)
+library(parallel)
+nRep <- 500
+iter <- 1:nRep
+RNGkind("L'Ecuyer-CMRG")
+#set.seed(1)
+rslt <- parallel::mclapply(iter,simSingle,mc.cores=parallel::detectCores(),mc.set.seed=TRUE)
+rv <- matrix(unlist(rslt),ncol=5,byrow=TRUE)
+
+boxplot(rv)
+#save(rv,file="test_trend_rv.RData")
+#svg("pvalue_hist.svg")
+#hist(rv,breaks=100)
+#dev.off()
+
+
+```
+
+#  test cenTS
+```{r test-cenTS}
+strDates <- c("2000-01-01", "2000-01-02", "2000-01-03", "2000-01-04", "2000-01-05")
+ts <- cenTS(value=c(1,-2,1,NA,0),
+          order.by=as.Date(strDates,"%Y-%m-%d"),
+          lcl=c(-3,-2,-1,-1,0),
+          ucl=c(3,2,1,1,1),
+          ci =c("N","L","R","N","L")
+)
+ts
+
+print(ts)
+xreg(ts)
+plot(ts)
+```
+
+# test carxSimCenTS
+```{r test-carx.default}
+#dat = carxSim(nObs=200,lcl=-0.5,ucl=0.5,intervalCensoring=TRUE)
+dat = carxSimCenTS(nObs=200,lcl=-0.5,ucl=0.5,intervalCensoring=F)
+plot(dat)
+dat = carxSimCenTS(nObs=200,lcl=-0.5,ucl=0.5,intervalCensoring=TRUE)
+plot(dat)
+#mdl <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, p=2)
+#print(mdl)
+
+```
+
+
+# carx.default
+
+```{r carx-default-single}
+
+
+  dat = carxSimCenTS(nObs=1000,lcl=-0.5,ucl=0.5,prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigma=0.60, intervalCensoring=TRUE)
+#plot(dat)
+mdl0 = arima(as.vector(dat$y),order=c(2,0,0),xreg=as.matrix(dat[,c("X1","X2")]),include.mean=FALSE)
+
+  mdl <- carx(y~X1+X2-1,data=dat, p=2,verbose = T)
+  rslt = c(coef(mdl),mdl$sigma)
+  rslt
+```
+
+
+```{r carx-default-rep}
+nRep = 500
+
+simSingle <- function(iRep)
+{
+  dat = carxSimCenTS(nObs=1000,lcl=-0.5,ucl=0.5,prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigma=0.60, intervalCensoring=TRUE)
+#plot(dat)
+  mdl <- carx(y~X1+X2-1,data=dat, p=2)
+  rslt = c(coef(mdl),mdl$sigma)
+  rslt
+}
+
+repRslt = lapply(1:nRep,FUN = simSingle)
+repRslt2 = matrix(unlist(repRslt),ncol=5,byrow = T)
+colnames(repRslt2) = c("X1","X2","AR1","AR2","sigma")
+summary(repRslt2)
+
+```
+> summary(repRslt2)
+       X1               X2              AR1               AR2             sigma       
+ Min.   :0.1473   Min.   :0.3373   Min.   :-0.3930   Min.   :0.1427   Min.   :0.5543  
+ 1st Qu.:0.1871   1st Qu.:0.3871   1st Qu.:-0.3054   1st Qu.:0.2240   1st Qu.:0.5886  
+ Median :0.2004   Median :0.3994   Median :-0.2822   Median :0.2499   Median :0.5997  
+ Mean   :0.2013   Mean   :0.3993   Mean   :-0.2818   Mean   :0.2478   Mean   :0.5993  
+ 3rd Qu.:0.2154   3rd Qu.:0.4115   3rd Qu.:-0.2590   3rd Qu.:0.2712   3rd Qu.:0.6097  
+ Max.   :0.2617   Max.   :0.4649   Max.   :-0.1844   Max.   :0.3267   Max.   :0.6458  
+> 

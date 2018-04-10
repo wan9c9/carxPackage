@@ -28,10 +28,10 @@ ot.carx <- function(object)
 	ucl <- object$ucl
   finiteRows <- object$finiteRows
 
-	if(any(ci[finiteRows]>0))
-    y[finiteRows][ci[finiteRows]>0] <- ucl[finiteRows][ci[finiteRows]>0]
-  if(any(ci[finiteRows]<0))
-	y[finiteRows][ci[finiteRows]<0] <- lcl[finiteRows][ci[finiteRows]<0]
+	if(any(ci[finiteRows]=="R"))
+    y[finiteRows][ci[finiteRows]=="R"] <- ucl[finiteRows][ci[finiteRows]=="R"]
+  if(any(ci[finiteRows]=="L"))
+	y[finiteRows][ci[finiteRows]=="L"] <- lcl[finiteRows][ci[finiteRows]=="L"]
 
 	pValues <- numeric(nObs)
 	pValues[skipIndex] <- 1
@@ -41,13 +41,13 @@ ot.carx <- function(object)
 		#message(sprintf("checking %i",idx))
 		wkm <- y[(idx-1):(idx-p)]
 		tmpCensorIndicator <- ci[(idx-1):(idx-p)]
-		nCensored <- sum(tmpCensorIndicator!=0)
-    censored <- tmpCensorIndicator[tmpCensorIndicator!=0]
+		nCensored <- sum(tmpCensorIndicator!="N")
+    censored <- tmpCensorIndicator[tmpCensorIndicator!="N"]
 		if(nCensored)   #at least one is censored
 		{
 			if( nCensored < p ) #not all are censored
 			{
-				conditionalIndex <- which(tmpCensorIndicator==0) #indices of known values
+				conditionalIndex <- which(tmpCensorIndicator=="N") #indices of known values
 				tmpY <- y[(idx-1):(idx-p)][conditionalIndex] #known values
 				tmpM <- trend[(idx-1):(idx-p)]
 				cdist <- conditionalDistMvnorm(tmpY, conditionalIndex,tmpM,covEta)
@@ -59,13 +59,23 @@ ot.carx <- function(object)
 			}
       tmpLower <- rep(-Inf,length = nCensored)
       tmpUpper <- rep(Inf,length = nCensored)
-      tmpLower[censored>0] <- object$ucl[(idx-1):(idx-p)][tmpCensorIndicator>0]
-      tmpUpper[censored<0] <- object$lcl[(idx-1):(idx-p)][tmpCensorIndicator<0]
+      #tmpLower[censored>0] <- object$ucl[(idx-1):(idx-p)][tmpCensorIndicator>0]
+      #tmpUpper[censored<0] <- object$lcl[(idx-1):(idx-p)][tmpCensorIndicator<0]
+      # lower limit is upper censor limit
+			tmpLower[censored=="R"] <- object$ucl[(idx-1)::(idx-p)][which(tmpCensorIndicator=="R")]
+			# upper limit is lower censor limit
+			tmpUpper[censored=="L"] <- object$lcl[(idx-1):(idx-p)][which(tmpCensorIndicator=="L")]
+			## in case of interval censoring
+			## lower limit is lower censor limit
+			tmpLower[censored=="I"] <- object$lcl[(idx-1):(idx-p)][which(tmpCensorIndicator=="I")]
+			## upper limit is upper censor limit
+			tmpUpper[censored=="I"] <- object$ucl[(idx-1):(idx-p)][which(tmpCensorIndicator=="I")]
+	
 			smpl <- tmvtnorm::rtmvnorm(nSample,tmpMean,tmpVar,lower=tmpLower,upper=tmpUpper,algorithm="gibbs")
 			smpl <- as.matrix(smpl)
 			ySmpl <- numeric(nSample)
 			for(i in 1:nSample){
-				wkm[tmpCensorIndicator!=0] <- smpl[i,]
+				wkm[tmpCensorIndicator!="N"] <- smpl[i,]
 				ySmpl[i] <- trend[idx] + (wkm - trend[(idx-1):(idx-p)])%*%prmtrAR + eps[i]
 			}
 			pU <- sum(ySmpl > y[idx])/nSample
@@ -125,10 +135,10 @@ ot2.carx <- function(object)
 	ucl <- object$ucl
   finiteRows <- object$finiteRows
 
-	if(any(ci[finiteRows]>0))
-    y[finiteRows][ci[finiteRows]>0] <- ucl[finiteRows][ci[finiteRows]>0]
-  if(any(ci[finiteRows]<0))
-	y[finiteRows][ci[finiteRows]<0] <- lcl[finiteRows][ci[finiteRows]<0]
+	if(any(ci[finiteRows]=="R"))
+    y[finiteRows][ci[finiteRows]=="R"] <- ucl[finiteRows][ci[finiteRows]=="R"]
+  if(any(ci[finiteRows]=="L"))
+	y[finiteRows][ci[finiteRows]=="L"] <- lcl[finiteRows][ci[finiteRows]="L"]
 
 	pValues <- numeric(nObs)
 	pValues[skipIndex] <- 1
@@ -137,13 +147,13 @@ ot2.carx <- function(object)
 	{
 		#message(sprintf("checking %i",idx))
 		tmpCensorIndicator <- ci[(idx):(idx-p)]
-		nCensored <- sum(tmpCensorIndicator[-1]!=0)
-    censored <- tmpCensorIndicator[-1][tmpCensorIndicator[-1]!=0]
+		nCensored <- sum(tmpCensorIndicator[-1]!="N")
+    censored <- tmpCensorIndicator[-1][tmpCensorIndicator[-1]!="N"]
 		if(nCensored)   #at least one is censored
 		{
 			if( nCensored < p ) #not all are censored
 			{
-				conditionalIndex <- which(tmpCensorIndicator==0) #indices of known values
+				conditionalIndex <- which(tmpCensorIndicator=="N") #indices of known values
         if(conditionalIndex[1]==1) #first value is to be predicted
           conditionalIndex = conditionalIndex[-1]
 				tmpY <- y[(idx):(idx-p)][conditionalIndex] #known values
@@ -157,23 +167,43 @@ ot2.carx <- function(object)
 			}
       tmpLower <- rep(-Inf,length = nCensored)
       tmpUpper <- rep(Inf,length = nCensored)
-      tmpLower[censored>0] <- ucl[(idx-1):(idx-p)][tmpCensorIndicator[-1]>0]
-      tmpUpper[censored<0] <- lcl[(idx-1):(idx-p)][tmpCensorIndicator[-1]<0]
+      #tmpLower[censored>0] <- ucl[(idx-1):(idx-p)][tmpCensorIndicator[-1]>0]
+      #tmpUpper[censored<0] <- lcl[(idx-1):(idx-p)][tmpCensorIndicator[-1]<0]
+       # lower limit is upper censor limit
+			tmpLower[censored=="R"] <- ucl[(idx-1)::(idx-p)][which(tmpCensorIndicator[-1]=="R")]
+			# upper limit is lower censor limit
+			tmpUpper[censored=="L"] <- lcl[(idx-1):(idx-p)][which(tmpCensorIndicator[-1]=="L")]
+			## in case of interval censoring
+			## lower limit is lower censor limit
+			tmpLower[censored=="I"] <- lcl[(idx-1):(idx-p)][which(tmpCensorIndicator[-1]=="I")]
+			## upper limit is upper censor limit
+			tmpUpper[censored=="I"] <- ucl[(idx-1):(idx-p)][which(tmpCensorIndicator[-1]=="I")]
+	     
+      
       tmpLower <- c(-Inf,tmpLower)
       tmpUpper <- c(Inf,tmpUpper)
-      if(ci[idx]<0)
+      if(ci[idx]=="L")
+      {
         qn = object$lcl[idx]
-      else{ 
-        if(ci[idx]>0) 
-          qn = ucl[idx]
-        else{
-          qn = y[idx]
-        }
+        pval = tmvtnorm::ptmvnorm.marginal(qn,n=1,mean=tmpMean,sigma=tmpVar,lower=tmpLower,upper=tmpUpper)
       }
-      pval = tmvtnorm::ptmvnorm.marginal(qn,n=1,mean=tmpMean,sigma=tmpVar,lower=tmpLower,upper=tmpUpper)
-      if(ci[idx]==0) 
+      if(ci[idx]=="R")
+      {
+        qn = ucl[idx]
+        pval = tmvtnorm::ptmvnorm.marginal(qn,n=1,mean=tmpMean,sigma=tmpVar,lower=tmpLower,upper=tmpUpper)
+      }
+      if(ci[idx]=="I")
+      {
+          qn = c(lcl[idx],ucl[idx])
+          pvalI = tmvtnorm::ptmvnorm.marginal(qn,n=1,mean=tmpMean,sigma=tmpVar,lower=tmpLower,upper=tmpUpper)
+          pval = min(pvalI[1],1-pvalI[2])
+      }
+      if(ci[idx]=="N")
+      {
+        qn = y[idx]
+        pval = tmvtnorm::ptmvnorm.marginal(qn,n=1,mean=tmpMean,sigma=tmpVar,lower=tmpLower,upper=tmpUpper)
         pval = min(pval,1-pval)
-      pValues[idx] = pval
+      }
 	  }else{
 			r <- y[idx]-trend[idx] - (y[(idx-1):(idx-p)]-trend[(idx-1):(idx-p)])%*%prmtrAR
 			r <- r/object$sigma
@@ -214,6 +244,7 @@ outlier <- function(object,outlier.prefix="OI_",seed=NULL) UseMethod("outlier")
 #'
 #' Detect all outliers of a \code{carx} object and update the model if any outlier is detected.
 #' It tests for the presence of outliers one at a time, for each time point, adjusted for multiplicity of testing, as described in Wang and Chan (2017).
+#' Need to think more for the case of interval censoring.
 #' @param object a \code{carx} object.
 #' @param outlier.prefix the prefix used to construct variable name for indicator variables representing the detected outliers, default = "OI_".
 #' @param seed the seed for randon number generator, default=\code{NULL}.

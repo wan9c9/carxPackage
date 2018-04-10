@@ -24,6 +24,7 @@
 #' @export
 #' @examples
 #' dat = carxSim()
+#' dat = carxSim(intervalCensoring=TRUE)
 
 carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigma=0.60, lcl=-1, ucl=1, x = NULL, seed=NULL,inno.dist=c("normal","t"),t.df=5,intercept=0,intervalCensoring=FALSE)
 {
@@ -92,16 +93,16 @@ carxSim <- function(nObs=200, prmtrAR=c(-0.28,0.25), prmtrX=c(0.2,0.4), sigma=0.
 		eta[i] <- eta[(i-1):(i-p)] %*% prmtrAR + eps[i]
 		y[i] <- trend[i] + eta[i]
 	}
-	ci <- rep(0,nObs)
+	ci <- rep("N",nObs)
   if(intervalCensoring)
   {
-    ci[y>lcl & y<ucl] = NA
+    ci[y>lcl & y<ucl] = "I"
   }else{ 
-    ci[y<lcl] <- -1 
-    ci[y>ucl] <- 1
+    ci[y<lcl] <- "L"
+    ci[y>ucl] <- "R"
   }
 
-  if(options()$verbose) message(paste0("simulated series: censor rate: ", sum(abs(ci))/nObs))
+  if(options()$verbose) message(paste0("simulated series: censor rate: ", sum(ci!="N")/nObs))
 	ret <- list(y = y,
 		    ci=ci,
 		    lcl=lcl,

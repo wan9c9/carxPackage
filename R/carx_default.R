@@ -11,9 +11,10 @@ carx <- function(y,...) UseMethod("carx")
 #' @param y a vector of possibly censored responses.  
 #' @param x a matrix of covariates, or some object which can be coerced to matrix. Default=\code{NULL}, 
 #'  indicating a pure AR model for \code{y}.
-#' @param ci a vector of numeric values. If its i-th value is zero (negative, positive, or NA), then the 
-#'  corresponding element of 
-#' \code{y} is uncensored (left, right censored, or interval censored). Note that the above specification is purely for back compatibility, internally NA means no censoring and 0 means interval censoring.
+#' @param ci a vector or a list. \code{ci} can be one of the following.
+#'          * a vector of numeric values. If its i-th value is negative, zero, or positive, then the corresponding element of \code{y} is left, not, or right censored. In this case, interval censoring cannot be represented.
+# Note that the above specification is purely for back compatibility, internally NA means no censoring and 0 means interval censoring.  
+#'          * a vector of character values 'N', 'L','R',and 'I'. If its i-th value is  'N', 'L','R', or 'I', then the corresponding element of \code{y} is not censored, left, right, or interval censored.
 #'  Default = \code{NULL}, indicating no censoring.
 #' @param lcl a vector of lower censoring limits, or a number assuming constant limit. 
 #'  Default = \code{NULL}, indicating no lower censoring limit.
@@ -103,17 +104,24 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 
   finiteY <- which(is.finite(y))
 
+  #check ci
 	#standardize censorIndicator
   ciSupplied = ci
-
+  
   if(is.null(ci))
-    ci <- rep(NA,length(y))
+    ci <- rep("N",length(y))
   else
-  { # switch 0 and NA notation for no-censoring and interval censoring
-    ci[is.na(ciSupplied)] = 0
-    ci[which(ciSupplied==0)] = NA
+  {
+    if(is.numeric(ciSupplied))
+    {
+      ci[finiteY][ ci[finiteY]==0 ] <- "N" 
+      ci[finiteY][ ci[finiteY]>0 ] <- "R" 
+      ci[finiteY][ ci[finiteY]<0 ] <- "L"
+      #ci[ci<0] = "L"
+      #ci[ci==0] = "N"
+      #ci[ci>0] = "R"
+    }
   }
-	ci[finiteY][ ci[finiteY]>0 ] <- 1; ci[finiteY][ ci[finiteY]<0 ] <- -1
   
 
 	if(!is.null(prmtrAR) & length(prmtrAR) != p)
@@ -122,8 +130,8 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 
 	if(is.null(lcl)) # no lower censoring limit
 	{
-		if(any(ci[finiteY]<0)) # ci indicates existence of lower censoring
-			stop("Error in data: lcl is null but there exist left-censored data.")
+		if(any(ci[finiteY]=="L" | ci[finiteY]=="I")) # ci indicates existence of lower/interval censoring
+			stop("Error in data: lcl is null but there exist left/interval-censored data.")
 		else
 			lcl = rep(-Inf,nObs)
 	} else{
@@ -146,8 +154,8 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 
 	if(is.null(ucl)) #no upper censoring
 	{
-		if(any(ci[finiteY]>0)) #check
-			stop("Error in data: ucl is null but there exist right-censored data.")
+		if(any(ci[finiteY]=="R" | ci[finiteY]=="I")) #check
+			stop("Error in data: ucl is null but there exist right/interval-censored data.")
 		else
 			ucl = rep(Inf,nObs)
 	} else{
@@ -172,13 +180,13 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 		stop("Error in censor limit: some lower censor limits are bigger than upper censor limits.")
 
 
-	noCensor  <- all(is.na(ci[finiteY])) # remember: NA in ci indicates no censoring
+	noCensor  <- all((ci[finiteY]=="N")) #"N" in ci indicates no censoring
   if(nonfiniteYAsCensored)
   {
     idx <- !is.finite(y)
     if(any(idx))
     {
-      ci[idx] <- -1
+      ci[idx] <- "L"
       lcl[idx] <- Inf
       ucl[idx] <- -Inf #no need to assign to both censoring limits
       noCensor  <- FALSE
@@ -305,8 +313,8 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 		return(ret)
 	}
 
-	getCensorRate <- function(){ #NA indicates interval censoring
-		return(sum(is.finite(ci[finiteRows]))*1.0/sum(finiteRows))
+	getCensorRate <- function(){ #"N" indicates no censoring
+		return(1-sum(ci[finiteRows]=="N")*1.0/sum(finiteRows))
 	}
 
 
@@ -354,12 +362,12 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 		{
 		  #if(idx ==92 )
 			tmpCensorIndicator <- ci[idx:(idx-p)]
-			nCensored <- sum(is.finite(tmpCensorIndicator))
-			if(nCensored>0)
-			{# at least one is censored
+			nCensored <- (p+1)-sum(tmpCensorIndicator=="N")
+			if(nCensored>0) # at least one is censored
+			{
 				if( nCensored < (p+1) ) #not all are censored
 				{
-					conditionalIndex <- which(is.na(tmpCensorIndicator)) #indices for observed data
+					conditionalIndex <- which(tmpCensorIndicator=="N") #indices for observed data
 					tmpY <- y[idx:(idx-p)][conditionalIndex]
 					tmpM <- trend[idx:(idx-p)]
 					cdist <- conditionalDistMvnorm(tmpY,conditionalIndex,tmpM,covEta)
@@ -371,22 +379,22 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 				}
 				tmpLower <- rep(-Inf,length = nCensored)
 				tmpUpper <- rep(Inf,length = nCensored)
-				censored <- tmpCensorIndicator[is.finite(tmpCensorIndicator)] #censored indices
+				censored <- tmpCensorIndicator[tmpCensorIndicator!="N"] #censored indices
 
 				# lower limit is upper censor limit
-				tmpLower[censored>0] <- ucl[idx:(idx-p)][which(tmpCensorIndicator>0)]
+				tmpLower[censored=="R"] <- ucl[idx:(idx-p)][which(tmpCensorIndicator=="R")]
 				# upper limit is lower censor limit
-				tmpUpper[censored<0] <- lcl[idx:(idx-p)][which(tmpCensorIndicator<0)]
+				tmpUpper[censored=="L"] <- lcl[idx:(idx-p)][which(tmpCensorIndicator=="L")]
         ## in case of interval censoring
         ## lower limit is lower censor limit
-				tmpLower[censored==0] <- lcl[idx:(idx-p)][which(tmpCensorIndicator==0)]
+				tmpLower[censored=="I"] <- lcl[idx:(idx-p)][which(tmpCensorIndicator=="I")]
         ## upper limit is upper censor limit
-				tmpUpper[censored==0] <- ucl[idx:(idx-p)][which(tmpCensorIndicator==0)]
+				tmpUpper[censored=="I"] <- ucl[idx:(idx-p)][which(tmpCensorIndicator=="I")]
 
 				#if(abs(det(tmpVar)) < 0.001) warning("covariance matrix is nearly singluar.")
 				ret <- tmvtnorm::mtmvnorm(tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)
-				wkMean[idx,which(tmpCensorIndicator!=0)] <<- ret$'tmean'
-				wkCov[idx,which(tmpCensorIndicator!=0),which(tmpCensorIndicator!=0)] <<- ret$'tvar'
+				wkMean[idx,which(tmpCensorIndicator!="N")] <<- ret$'tmean'
+				wkCov[idx,which(tmpCensorIndicator!="N"),which(tmpCensorIndicator!="N")] <<- ret$'tvar'
 			}
 			#if(verbose) message("E-step done.")
 		}
@@ -400,10 +408,10 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 			for(idx in seq(1,nObs)[-skipIndex])
 			{
 				tmpCensorIndicator <- ci[idx:(idx-p)]
-				wkMean[idx,which(tmpCensorIndicator>0)] <<- ucl[idx:(idx-p)][which(tmpCensorIndicator>0)]
-				wkMean[idx,which(tmpCensorIndicator<0)] <<- lcl[idx:(idx-p)][which(tmpCensorIndicator<0)]
-				wkMean[idx,which(tmpCensorIndicator==0)] <<- 0.5*(lcl[idx:(idx-p)][which(tmpCensorIndicator==0)] + 
-                                                          ucl[idx:(idx-p)][which(tmpCensorIndicator==0)])
+				wkMean[idx,which(tmpCensorIndicator=="R")] <<- ucl[idx:(idx-p)][which(tmpCensorIndicator=="R")]
+				wkMean[idx,which(tmpCensorIndicator=="L")] <<- lcl[idx:(idx-p)][which(tmpCensorIndicator=="L")]
+				wkMean[idx,which(tmpCensorIndicator=="I")] <<- 0.5*(lcl[idx:(idx-p)][which(tmpCensorIndicator=="I")] + 
+                                                          ucl[idx:(idx-p)][which(tmpCensorIndicator=="I")])
 
 				wkCov[idx,,] <<- 0
 			}
@@ -567,7 +575,7 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
     U <- NULL #record t such that y[t:(t-p)] are uncensored
     for(t in (1:nObs)[-skipIndex])
     {
-      if(all(ci[t:(t-p)]==0))
+      if(all(ci[t:(t-p)]=="N"))
         U <- c(U,t)
     }
     if(is.null(U))
@@ -636,12 +644,12 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 			eta[i] <- eta[(i-1):(i-p)] %*% prmtrAR + eps[i]
 			y[i] <<- trend[i] + eta[i]
 		}
-		ci <<- rep(NA,nObs)
+		ci <<- rep("N",nObs)
 
-		ci[ret$ci==-1][y[ret$ci==-1]<lcl[ret$ci==-1]] <<- -1
-		ci[ret$ci==1][y[ret$ci==1]>ucl[ret$ci==1]] <<- 1
-    ci[ret$ci==0][y[ret$ci==0]>=lcl[ret$ci==0] & y[ret$ci==0]<=ucl[ret$ci==0]] <<- 0
-		if(verbose) message(paste0("\ncensor rate: ", sum(is.finite(ci))/nObs))
+		ci[ret$ci=="L"][y[ret$ci=="L"]<lcl[ret$ci=="L"]] <<- "L"
+		ci[ret$ci=="R"][y[ret$ci=="R"]>ucl[ret$ci=="R"]] <<- "R"
+    ci[ret$ci=="I"][y[ret$ci=="I"]>=lcl[ret$ci=="I"] & y[ret$ci=="I"]<=ucl[ret$ci=="I"]] <<- "I"
+		if(verbose) message(paste0("\ncensor rate: ", sum(ci!="N")/nObs))
 	}
 
 	bootstrapCI <- function(CI.level,b)
@@ -680,7 +688,7 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 	#message("initializing parameters")
 	if(needInit || noCensor )  # If no censoring, it is estimating an AR-X
   {
-    if(init.method == "biased" | any(ci>=0))
+    if(init.method == "biased" | !all(ci=="L"))
       initPrmtr(tol, max.iter)
     else
     {
@@ -781,9 +789,13 @@ carx.default <- function(y,x=NULL,ci=NULL,lcl=NULL,ucl=NULL,
 #' @param data  a \code{list}, \code{data.frame}, or a \code{\link{cenTS}} object which includes the following:
 #'  * the response variable with variable name identified by the supplied formula.
 #'  * any covariate(s) with with variable name(s) identified by the supplied formula.
-#'  * \code{ci} whose components take values from {-1, 0,  1}, where -1 (0,1) indicates that the corresponding element in the response variable is left-censored (not censored,  right censored). 
-#'  * \code{lcl} which denotes the vector of left (lower) censoring limits. %, or a numeric value representing a constant left (lower)  censoring limit. If not present, indicating no lower limit. 
-#'  * \code{ucl} which denotes the vector of right (upper)  censoring limits. %, or a numeric value representing a constant limit. If not present, indicating no upper limit.
+#'  * \code{ci} which can be one of the following.
+#'          * a vector of numeric values. If its i-th value is negative, zero, or positive, then the corresponding element of \code{y} is left, not, or right censored. In this case, interval censoring cannot be represented.
+# Note that the above specification is purely for back compatibility, internally NA means no censoring and 0 means interval censoring.  
+#'          * a vector of character values 'N', 'L','R',and 'I'. If its i-th value is  'N', 'L','R', or 'I', then the corresponding element of \code{y} is not censored, left, right, or interval censored.
+#  * \code{ci} whose components take values from {-1, 0,  1}, where -1 (0,1) indicates that the corresponding element in the response variable is left-censored (not censored,  right censored). 
+#  * \code{lcl} which denotes the vector of left (lower) censoring limits. %, or a numeric value representing a constant left (lower)  censoring limit. If not present, indicating no lower limit. 
+#  * \code{ucl} which denotes the vector of right (upper)  censoring limits. %, or a numeric value representing a constant limit. If not present, indicating no upper limit.
 #' @param ... other parameters accepted by \code{\link{carx.default}} except \code{y}, \code{x}, \code{ci}, \code{lcl}, and \code{ucl}.
 #' @return a CARX object of the estimated model.
 #' @export
@@ -806,6 +818,7 @@ carx.formula <- function(formula, data=list(),...)
   {
     data2 <- data.frame(zoo::coredata(data))
     vars$cenTS <- data
+    vars$ci <- attributes(data)$ci
   }
   else
     data2 <- data
@@ -820,7 +833,7 @@ carx.formula <- function(formula, data=list(),...)
   if( "ucl" %in% names(data2) )
     vars$ucl <- data2$ucl
   
-  if( "ci" %in% names(data2) )
+  if(is.null(vars$ci) & "ci" %in% names(data2))
     vars$ci <- data2$ci
 
   toPass <- c(list(y=y,x=x),vars)

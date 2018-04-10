@@ -44,30 +44,39 @@ residuals.carx <- function(object,type=c("raw","pearson"),seed=NULL,...)
 	{
    if(!finiteRows[idx])
       next
-		if(object$ci[idx] > 0)
+		if(object$ci[idx] == "R")
 			y[idx] = object$ucl[idx]
-		else if(object$ci[idx] < 0 )
+		if(object$ci[idx] =="L" )
 				y[idx] = object$lcl[idx]
+		if(object$ci[idx] =="I" )
+				y[idx] = 0.5*(object$lcl[idx]+object$ucl[idx])
 	}
 
 	for(idx in (p+1):nObs)
 	{
     if(!finiteRows[idx])
       next
-		if(object$ci[idx] == 0)
+		if(object$ci[idx] == "N")
 		{
 			#message(sprintf("idx %i, not censored",idx))
 			next
 		}
 
-		if(all(object$ci[(idx-1):(idx-p)]==0))
+		if(all(object$ci[(idx-1):(idx-p)]=="N")) #previous p observations are observed
     {
 		  #message(sprintf("idx %i, fast ",idx))
 			tmpMean <- trend[idx] + eta[(idx-1):(idx-p)]%*%object$prmtrAR
-			if(object$ci[idx] > 0)
+			if(object$ci[idx] == "R")
 				y[idx] <- tmvtnorm::rtmvnorm(1, mean=c(tmpMean), sigma=c(object$sigma),lower=object$ucl[idx],upper=Inf,algorithm="gibbs")
 			else
-				y[idx] <- tmvtnorm::rtmvnorm(1, mean=c(tmpMean), sigma=c(object$sigma),lower=-Inf, upper = object$lcl[idx],algorithm="gibbs")
+			{
+			  if(object$ci[idx] == "L") 
+			    y[idx] <- tmvtnorm::rtmvnorm(1, mean=c(tmpMean), sigma=c(object$sigma),lower=-Inf, upper = object$lcl[idx],algorithm="gibbs") 
+			  else {
+			    if(object$ci[idx] == "I")
+				  y[idx] <- tmvtnorm::rtmvnorm(1, mean=c(tmpMean), sigma=c(object$sigma),lower=object$lcl[idx], upper = object$ucl[idx],algorithm="gibbs") 
+			  }
+			}
 			next
 		}
 
@@ -75,7 +84,7 @@ residuals.carx <- function(object,type=c("raw","pearson"),seed=NULL,...)
 		iStart <- 1
 		for(i in (idx-p):1)
 		{
-			if(all(object$ci[i:(i+p-1)]==0))
+			if(all(object$ci[i:(i+p-1)]=="N"))
 			{
 				iStart <- i
 				break
@@ -85,11 +94,11 @@ residuals.carx <- function(object,type=c("raw","pearson"),seed=NULL,...)
 		nStart <- idx - iStart + 1
 		#message(sprintf("idx: %i, iStart: %i, nStart: %i",idx,iStart,nStart))
 		tmpCensorIndicator <- object$ci[idx:iStart] #reverse order
-		nCensored <- sum(tmpCensorIndicator!=0)
+		nCensored <- sum(tmpCensorIndicator!="N")
 		covEta <- computeCovAR(object$prmtrAR, object$sigma, nStart)
 		if( nCensored < nStart )
 		{
-			conditionalIndex <- which(tmpCensorIndicator==0)
+			conditionalIndex <- which(tmpCensorIndicator=="N")
 			tmpY <- object$y[idx:iStart][conditionalIndex]
 			cdist <- conditionalDistMvnorm(tmpY, conditionalIndex, trend[idx:iStart], covEta)
 			tmpMean <- cdist$'mean'
@@ -102,8 +111,18 @@ residuals.carx <- function(object,type=c("raw","pearson"),seed=NULL,...)
 		tmpLower <- rep(-Inf,length = nCensored) #( y[idx], censored obs)
 		tmpUpper <- rep(Inf,length = nCensored)
 		censored <- tmpCensorIndicator[tmpCensorIndicator!=0]
-		tmpLower[censored>0] <- object$ucl[idx:iStart][tmpCensorIndicator>0]
-		tmpUpper[censored<0] <- object$lcl[idx:iStart][tmpCensorIndicator<0]
+		#tmpLower[censored>0] <- object$ucl[idx:iStart][tmpCensorIndicator>0]
+		#tmpUpper[censored<0] <- object$lcl[idx:iStart][tmpCensorIndicator<0]
+		# lower limit is upper censor limit
+		tmpLower[censored=="R"] <- object$ucl[idx:iStart][which(tmpCensorIndicator=="R")]
+		# upper limit is lower censor limit
+		tmpUpper[censored=="L"] <- object$lcl[idx:iStart][which(tmpCensorIndicator=="L")]
+		## in case of interval censoring
+		## lower limit is lower censor limit
+		tmpLower[censored=="I"] <- object$lcl[idx:iStart][which(tmpCensorIndicator=="I")]
+		## upper limit is upper censor limit
+		tmpUpper[censored=="I"] <- object$ucl[idx:iStart][which(tmpCensorIndicator=="I")]
+		
 		ysim <- tmvtnorm::rtmvnorm(1, mean=tmpMean, sigma=tmpVar, lower=tmpLower, upper=tmpUpper,algorithm="gibbs")
 		y[idx] <- ysim[1]
   }
