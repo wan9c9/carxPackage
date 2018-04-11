@@ -35,6 +35,42 @@ mdl <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, 
 }
 
 simSingle(1)
+```
+
+```{r test-individual-functions}
+iRep = 1
+dat <- carxSim(nObs=nObs,lcl=-0.5,ucl=0.5,intervalCensoring=TRUE,seed=37951*iRep)
+plot(dat)
+
+mdl <- carx(y=dat$y, x=dat[,c("X1","X2")], ci=dat$ci, lcl=dat$lcl, ucl=dat$ucl, p=2)
+
+dat <- carxSimCenTS(nObs=nObs,lcl=-0.5,ucl=0.5,intervalCensoring=FALSE,seed=37951*iRep)
+plot(dat)
+#OK
+
+
+dat <- carxSimCenTS(nObs=nObs,lcl=-0.5,ucl=0.5,intervalCensoring=TRUE,seed=37951*iRep)
+plot(dat)
+#OK
+
+mdl <- carx(y~X1+X2,dat,p=2)
+mdl
+summary(mdl)
+#OK
+
+fit = fitted(mdl)
+res = residuals(mdl)
+
+plot(mdl)
+#OK, a bit slow
+
+  #debug(testForTrend)
+  #tft <- testForTrend(mdl)
+  c(coef(mdl),mdl$sigma)
+```
+
+
+```{r test-estimation}
 library(parallel)
 nRep <- 500
 iter <- 1:nRep
@@ -48,8 +84,6 @@ boxplot(rv)
 #svg("pvalue_hist.svg")
 #hist(rv,breaks=100)
 #dev.off()
-
-
 ```
 
 #  test cenTS

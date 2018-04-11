@@ -194,7 +194,7 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
 	iStart <- 1
 	for(i in (nObs-p+1):1)
 	{
-		if(all(object$ci[i:(i+p-1)]==0))
+		if(all(object$ci[i:(i+p-1)]=='N'))
 		{
 			iStart <- i
 			break
@@ -221,7 +221,7 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
     predSE <- rep(0,n.ahead)
 	  newxreg <- rbind(object$x[iStart:nObs,],newxreg)
 		tmpCensorIndicator <- object$ci[nObs:iStart] #reverse order
-		nCensored <- sum(tmpCensorIndicator!=0)
+		nCensored <- sum(tmpCensorIndicator!='N')
     covEta <- computeCovAR(object$prmtrAR, object$sigma, nStart)
     trend <- as.vector(newxreg[nStart:1,]%*%object$prmtrX)
 
@@ -229,7 +229,7 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
     {
       if( nCensored < nStart )
       {
-        conditionalIndex <- which(tmpCensorIndicator==0)
+        conditionalIndex <- which(tmpCensorIndicator=='N')
         tmpY <- object$y[nObs:iStart][conditionalIndex]
         cdist <- conditionalDistMvnorm(tmpY, conditionalIndex,trend,covEta)
         tmpMean <- cdist$'mean'
@@ -242,8 +242,11 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
       tmpLower <- rep(-Inf,length = nCensored)
       tmpUpper <- rep(Inf,length = nCensored)
       censored <- tmpCensorIndicator[tmpCensorIndicator!=0]
-      tmpLower[censored>0] <- object$ucl[nObs:iStart][tmpCensorIndicator>0]
-      tmpUpper[censored<0] <- object$lcl[nObs:iStart][tmpCensorIndicator<0]
+      tmpLower[censored=='R'] <- object$ucl[nObs:iStart][tmpCensorIndicator=='R']
+      tmpUpper[censored=='L'] <- object$lcl[nObs:iStart][tmpCensorIndicator=='L']
+      tmpLower[censored=='I'] <- object$lcl[nObs:iStart][tmpCensorIndicator=='I']
+      tmpUpper[censored=='I'] <- object$ucl[nObs:iStart][tmpCensorIndicator=='R']
+
       yCensored <- tmvtnorm::rtmvnorm(nRep,tmpMean,tmpVar,lower = tmpLower,upper=tmpUpper)#,algorithm="gibbs")
     }
 
@@ -260,7 +263,7 @@ predict.carx <- function(object,newxreg=NULL,n.ahead=1,CI.level=0.95,nRep=1000,n
     {
       etaFuture[iRep,nStart:1] <- eta[nStart:1]
       if(nCensored>0) #censoring exists, use simulated values for censored y's.
-        etaFuture[iRep,nStart:1][tmpCensorIndicator!=0] <- yCensored[iRep,] - trend[tmpCensorIndicator!=0]
+        etaFuture[iRep,nStart:1][tmpCensorIndicator!='N'] <- yCensored[iRep,] - trend[tmpCensorIndicator!='N']
       for(i in 1:n.ahead)
         etaFuture[iRep,nStart+i] <- etaFuture[iRep,(nStart+i-1):(nStart+i-p)]%*%object$prmtrAR + eps[iRep,i]
     }

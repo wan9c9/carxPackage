@@ -17,6 +17,9 @@
 #' either \eqn{(-\infty,c_{l,t})} or
 #' \eqn{(c_{u,t},\infty)}, and if it is censored, \eqn{Y_t} will be recorded as \eqn{c_{l,t}}
 #' or \eqn{c_{u,t}} respectively.
+#' 
+#' Note that as of version 0.7.2, \eqn{Y_t^*} can also be interval-censored, in which case, \eqn{Y_t^*} is interval censored if its value is between \eqn{(c_{l,t},c_{u,t})}.
+#' Whether \eqn{Y_t^*} is observed, left-,right-, or interval-censored is specified by \code{ci}, see the function \code{carx} for more details.
 #'
 #' The latent process \eqn{(Y_t^*)} is modelled as
 #' \deqn{

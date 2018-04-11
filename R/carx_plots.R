@@ -90,10 +90,10 @@ plot.carx <- function(x,FUN=identity, xAxisVar=NULL, xlab="Index", ylab="Respons
 
     ylim <- range(c(y,yh,lcl,ucl),na.rm=TRUE,finite=T)
 
-    if( any(object$ci[finiteRows]>0) )
-      y[finiteRows][object$ci[finiteRows]>0] <- ucl[finiteRows][object$ci[finiteRows]>0]
-    if( any(object$ci[finiteRows]<0) )
-      y[finiteRows][object$ci[finiteRows]<0] <- lcl[finiteRows][object$ci[finiteRows]<0]
+    if( any(object$ci[finiteRows]=='R') )
+      y[finiteRows][object$ci[finiteRows]=='R'] <- ucl[finiteRows][object$ci[finiteRows]=='R']
+    if( any(object$ci[finiteRows]=='L') )
+      y[finiteRows][object$ci[finiteRows]=='L'] <- lcl[finiteRows][object$ci[finiteRows]=='L']
 
     ylim[2] <- 1.3*ylim[2]
 
@@ -103,12 +103,12 @@ plot.carx <- function(x,FUN=identity, xAxisVar=NULL, xlab="Index", ylab="Respons
     if(validLcl & ordinalX)
     {
       graphics::lines(xAxisVar, lcl, lty=3, col="red")
-      graphics::points(xAxisVar[object$ci<0],lcl[object$ci<0],pch=2)
+      graphics::points(xAxisVar[object$ci=='L'],lcl[object$ci=='L'],pch=2)
     }
     if(validUcl & ordinalX)
     {
       graphics::lines(xAxisVar, ucl, lty=5, col="red")
-      graphics::points(xAxisVar[object$ci>0], ucl[object$ci>0],pch=6)
+      graphics::points(xAxisVar[object$ci=='R'], ucl[object$ci=='R'],pch=6)
     }
     graphics::legend("topright",legend=lgd,lty=plty,col=pcol)
 

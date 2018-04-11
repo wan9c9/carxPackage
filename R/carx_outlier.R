@@ -62,7 +62,7 @@ ot.carx <- function(object)
       #tmpLower[censored>0] <- object$ucl[(idx-1):(idx-p)][tmpCensorIndicator>0]
       #tmpUpper[censored<0] <- object$lcl[(idx-1):(idx-p)][tmpCensorIndicator<0]
       # lower limit is upper censor limit
-			tmpLower[censored=="R"] <- object$ucl[(idx-1)::(idx-p)][which(tmpCensorIndicator=="R")]
+			tmpLower[censored=="R"] <- object$ucl[(idx-1):(idx-p)][which(tmpCensorIndicator=="R")]
 			# upper limit is lower censor limit
 			tmpUpper[censored=="L"] <- object$lcl[(idx-1):(idx-p)][which(tmpCensorIndicator=="L")]
 			## in case of interval censoring
@@ -138,7 +138,7 @@ ot2.carx <- function(object)
 	if(any(ci[finiteRows]=="R"))
     y[finiteRows][ci[finiteRows]=="R"] <- ucl[finiteRows][ci[finiteRows]=="R"]
   if(any(ci[finiteRows]=="L"))
-	y[finiteRows][ci[finiteRows]=="L"] <- lcl[finiteRows][ci[finiteRows]="L"]
+	  y[finiteRows][ci[finiteRows]=="L"] <- lcl[finiteRows][ci[finiteRows]=="L"]
 
 	pValues <- numeric(nObs)
 	pValues[skipIndex] <- 1
@@ -170,7 +170,7 @@ ot2.carx <- function(object)
       #tmpLower[censored>0] <- ucl[(idx-1):(idx-p)][tmpCensorIndicator[-1]>0]
       #tmpUpper[censored<0] <- lcl[(idx-1):(idx-p)][tmpCensorIndicator[-1]<0]
        # lower limit is upper censor limit
-			tmpLower[censored=="R"] <- ucl[(idx-1)::(idx-p)][which(tmpCensorIndicator[-1]=="R")]
+			tmpLower[censored=="R"] <- ucl[(idx-1):(idx-p)][which(tmpCensorIndicator[-1]=="R")]
 			# upper limit is lower censor limit
 			tmpUpper[censored=="L"] <- lcl[(idx-1):(idx-p)][which(tmpCensorIndicator[-1]=="L")]
 			## in case of interval censoring
